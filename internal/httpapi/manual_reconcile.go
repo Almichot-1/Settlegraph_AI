@@ -40,6 +40,10 @@ func (a API) createRun(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "BAD_REQUEST", "scenario_run_id required", reqID(r))
 		return
 	}
+	if body.Scope == "LATEST_OBSERVATIONS" && body.ScenarioRunID != nil {
+		writeError(w, 400, "BAD_REQUEST", "scenario_run_id is not valid for latest observations", reqID(r))
+		return
+	}
 	if body.RulesVersion != "" && body.RulesVersion != "v1" && body.RulesVersion != "mvp-v1" {
 		writeError(w, 400, "BAD_REQUEST", "Unsupported rules version", reqID(r))
 		return
@@ -84,29 +88,30 @@ func (a API) createRun(w http.ResponseWriter, r *http.Request) {
 	}
 	var scenario string
 	var virtual time.Time
-	if body.ScenarioRunID != nil {
+	if body.Scope == "SCENARIO_RUN" {
 		scenario = *body.ScenarioRunID
 		err = tx.QueryRowContext(r.Context(), "SELECT virtual_now FROM scenario_runs WHERE organization_id=$1 AND id=$2", org, scenario).Scan(&virtual)
-	} else {
-		err = tx.QueryRowContext(r.Context(), "SELECT id,virtual_now FROM scenario_runs WHERE organization_id=$1 ORDER BY created_at DESC,id DESC LIMIT 1", org).Scan(&scenario, &virtual)
-	}
-	if errors.Is(err, sql.ErrNoRows) {
-		writeError(w, 404, "NOT_FOUND", "Scenario run not found", reqID(r))
-		return
-	}
-	if err != nil {
-		writeError(w, 503, "SERVICE_UNAVAILABLE", "Scenario unavailable", reqID(r))
-		return
+		if errors.Is(err, sql.ErrNoRows) {
+			writeError(w, 404, "NOT_FOUND", "Scenario run not found", reqID(r))
+			return
+		}
+		if err != nil {
+			writeError(w, 503, "SERVICE_UNAVAILABLE", "Scenario unavailable", reqID(r))
+			return
+		}
 	}
 	var cutoff time.Time
 	if err = tx.QueryRowContext(r.Context(), "SELECT clock_timestamp()").Scan(&cutoff); err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Snapshot clock unavailable", reqID(r))
 		return
 	}
+	if body.Scope == "LATEST_OBSERVATIONS" {
+		virtual = cutoff
+	}
 	jobKey := "manual:" + actor + ":" + key
 	var runID string
 	var created time.Time
-	err = tx.QueryRowContext(r.Context(), `INSERT INTO reconciliation_runs(organization_id,scenario_run_id,scope,rules_version,status,snapshot_cutoff,job_key) VALUES($1,$2,$3,'mvp-v1','QUEUED',$4,$5) RETURNING id,created_at`, org, scenario, body.Scope, cutoff, jobKey).Scan(&runID, &created)
+	err = tx.QueryRowContext(r.Context(), `INSERT INTO reconciliation_runs(organization_id,scenario_run_id,scope,rules_version,status,snapshot_cutoff,job_key) VALUES($1,NULLIF($2,'')::uuid,$3,'mvp-v1','QUEUED',$4,$5) RETURNING id,created_at`, org, scenario, body.Scope, cutoff, jobKey).Scan(&runID, &created)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Run creation failed", reqID(r))
 		return
@@ -116,7 +121,11 @@ func (a API) createRun(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Run queue failed", reqID(r))
 		return
 	}
-	response := map[string]any{"id": runID, "status": "QUEUED", "scope": body.Scope, "rules_version": "mvp-v1", "created_at": created.UTC().Format(time.RFC3339), "completed_at": nil, "matched_order_payment": 0, "matched_payment_settlement": 0, "unmatched_count": 0, "scenario_run_id": scenario}
+	var responseScenario any
+	if scenario != "" {
+		responseScenario = scenario
+	}
+	response := map[string]any{"id": runID, "status": "QUEUED", "scope": body.Scope, "rules_version": "mvp-v1", "created_at": created.UTC().Format(time.RFC3339), "completed_at": nil, "matched_order_payment": 0, "matched_payment_settlement": 0, "unmatched_count": 0, "scenario_run_id": responseScenario}
 	responseJSON, _ := json.Marshal(response)
 	_, err = tx.ExecContext(r.Context(), `INSERT INTO idempotency_requests(organization_id,actor_sub,method,route_template,idempotency_key,request_sha256,response_status,response_body,processing_state) VALUES($1,$2,'POST',$3,$4,$5,202,$6,'COMPLETED')`, org, actor, template, key, digest, responseJSON)
 	if err != nil {

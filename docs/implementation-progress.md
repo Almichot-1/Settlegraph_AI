@@ -17,7 +17,7 @@ Three Go services start under Docker Compose: public API, PostgreSQL-backed work
 | Go | `go test ./...`, `go vet ./...`, `go build ./cmd/...` | Passed |
 | Database | Fresh PostgreSQL databases: migrations twice, seeds twice | Passed; opening journal sums to zero |
 | BankSim concurrency/lifecycle | `TestConcurrentLedgerEffects` with isolated PostgreSQL, 100 same-key retries and 100 distinct attempts | Passed; no overspend, balanced journals, valid CREATED → ACCEPTED → SETTLEMENT_PENDING → SETTLED and CREATED → FAILED history, invalid transition rejected |
-| Reconciliation concurrency | `TestConcurrentRunDeduplication` with isolated PostgreSQL, 20 simultaneous same-key runs | Passed; one immutable run with two unique proof edges |
+| Reconciliation scopes | `TestConcurrentRunDeduplication` and `TestLatestObservationsUsesUnscopedEvidence` with isolated PostgreSQL | Passed; one immutable run with two unique proof edges under concurrency; latest scope matches unscoped order/payment/settlement data |
 | Demo identity and tenancy | `TestDemoIdentityRoleAndTenantBoundary` with isolated PostgreSQL | Passed; 401 invalid token, 403 viewer mutation, 404 foreign organization, 400 malformed JSON |
 | Local runtime | `make up`, `make smoke`, `make test-e2e` | Passed for all four synthetic scenarios, late evidence, human review, duplicate delivery, outage recovery, invalid signatures |
 | Delivery recovery | `python tests/e2e_delivery_recovery.py` | Passed twice; pending event redelivered after BankSim restart, product inbox deduplicated, source cursor/coverage and reconciliation recovered |
@@ -32,7 +32,7 @@ The detailed ticket states are in `AGENT_BACKLOG.json`. `TESTED` means its state
 - Source coverage deliberately refuses to claim completeness when a provider event is absent. Local automatic delivery retry and coverage repair passed; cloud queue integration and broader fault testing remain with SG-021.
 - SG-014 account metadata is seeded and listed without private balances; no provider account-balance observations are available yet.
 - SG-017 Bedrock adapter is absent; the offline investigator is operational and evidence bounded.
-- Optional import creation/upload/parse routes are absent; `GET /v1/imports` returns an empty page.
+- Optional import creation/upload/parse routes are absent; list/detail reads are backed by the product database.
 - SG-021 cloud deploy is not configured: no AWS credentials, IAM, TLS, budget alarm or cloud smoke. SG-022 final acceptance and two fresh-seed rehearsals remain.
 
 No real bank integration or live funds are involved. Local Compose PostgreSQL trust authentication is limited to unpublished database networks and must be replaced before cloud deployment.

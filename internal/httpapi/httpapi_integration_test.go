@@ -121,4 +121,28 @@ func TestDemoIdentityRoleAndTenantBoundary(t *testing.T) {
 	if secondPage.Code != 200 {
 		t.Fatalf("second account page status=%d body=%s", secondPage.Code, secondPage.Body.String())
 	}
+	latestReq := httptest.NewRequest("POST", "/v1/reconciliation/runs", strings.NewReader(`{"scope":"LATEST_OBSERVATIONS"}`))
+	latestReq.Header.Set("Authorization", "Bearer "+owner)
+	latestReq.Header.Set("X-Organization-Id", org)
+	latestReq.Header.Set("Idempotency-Key", "latest-unscoped-idem")
+	latestPage := httptest.NewRecorder()
+	handler.ServeHTTP(latestPage, latestReq)
+	var latest map[string]any
+	if latestPage.Code != 202 || json.Unmarshal(latestPage.Body.Bytes(), &latest) != nil || latest["scope"] != "LATEST_OBSERVATIONS" || latest["scenario_run_id"] != nil {
+		t.Fatalf("latest reconciliation request invalid: %d %s", latestPage.Code, latestPage.Body.String())
+	}
+	var importID string
+	err = db.QueryRow(`INSERT INTO imports(organization_id,filename,source_kind,expected_sha256,s3_key,status) VALUES($1,'synthetic.csv','ORDERS',$2,'local:test','AWAITING_UPLOAD') RETURNING id`, org, strings.Repeat("a", 64)).Scan(&importID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	importReq := httptest.NewRequest("GET", "/v1/imports/"+importID, nil)
+	importReq.Header.Set("Authorization", "Bearer "+viewer)
+	importReq.Header.Set("X-Organization-Id", org)
+	importPage := httptest.NewRecorder()
+	handler.ServeHTTP(importPage, importReq)
+	var importItem map[string]any
+	if importPage.Code != 200 || json.Unmarshal(importPage.Body.Bytes(), &importItem) != nil || importItem["id"] != importID {
+		t.Fatalf("import detail invalid: %d %s", importPage.Code, importPage.Body.String())
+	}
 }

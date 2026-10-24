@@ -95,8 +95,72 @@ func (a API) dashboardSeries(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a API) listImports(w http.ResponseWriter, r *http.Request) {
-	if _, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER"); !ok {
+	org, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER")
+	if !ok {
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": []any{}, "next_cursor": nil})
+	limit, cursor, ok := a.limitCursor(w, r, org)
+	if !ok {
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,status,filename,source_kind,created_at,accepted_records,rejected_records
+ FROM imports WHERE organization_id=$1 AND ($2='' OR id::text>$2) ORDER BY id LIMIT $3`, org, cursor, limit+1)
+	if err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Imports unavailable", reqID(r))
+		return
+	}
+	defer rows.Close()
+	items := []map[string]any{}
+	var next any
+	for rows.Next() {
+		item, err := scanImport(rows)
+		if err != nil {
+			writeError(w, 503, "SERVICE_UNAVAILABLE", "Imports unavailable", reqID(r))
+			return
+		}
+		if len(items) == limit {
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
+			break
+		}
+		items = append(items, item)
+	}
+	if rows.Err() != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Imports unavailable", reqID(r))
+		return
+	}
+	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": next})
+}
+
+func scanImport(row interface{ Scan(...any) error }) (map[string]any, error) {
+	var id, status, filename, kind string
+	var created time.Time
+	var accepted, rejected int
+	if err := row.Scan(&id, &status, &filename, &kind, &created, &accepted, &rejected); err != nil {
+		return nil, err
+	}
+	return map[string]any{"id": id, "status": status, "filename": filename, "source_kind": kind,
+		"created_at": created.UTC().Format(time.RFC3339), "accepted_records": accepted, "rejected_records": rejected}, nil
+}
+
+func (a API) getImport(w http.ResponseWriter, r *http.Request) {
+	org, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER")
+	if !ok {
+		return
+	}
+	id := r.PathValue("id")
+	if !demoUUID.MatchString(id) {
+		writeError(w, 400, "BAD_REQUEST", "Malformed import ID", reqID(r))
+		return
+	}
+	item, err := scanImport(a.DB.QueryRowContext(r.Context(), `SELECT id,status,filename,source_kind,created_at,accepted_records,rejected_records
+ FROM imports WHERE organization_id=$1 AND id=$2`, org, id))
+	if err == sql.ErrNoRows {
+		writeError(w, 404, "NOT_FOUND", "Import not found", reqID(r))
+		return
+	}
+	if err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Import unavailable", reqID(r))
+		return
+	}
+	writeJSON(w, 200, item)
 }

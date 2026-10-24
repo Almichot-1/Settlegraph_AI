@@ -102,3 +102,42 @@ func TestConcurrentRunDeduplication(t *testing.T) {
 		t.Fatalf("edge count=%d err=%v", edgeCount, err)
 	}
 }
+
+func TestLatestObservationsUsesUnscopedEvidence(t *testing.T) {
+	dsn := os.Getenv("PRODUCT_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("PRODUCT_TEST_DATABASE_URL required")
+	}
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	const org = "11111111-1111-4111-8111-111111111111"
+	now := time.Now().UTC()
+	_, err = db.Exec(`INSERT INTO merchant_orders(organization_id,external_reference,amount_minor,created_at) VALUES($1,'IMPORT-ORDER-1',700, $2)`, org, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range []struct{ provider, kind string }{{"BANK_A", "PAYMENT_ACCEPTED"}, {"BANK_B", "SETTLEMENT_POSTED"}} {
+		var inbox string
+		err = db.QueryRow(`INSERT INTO inbox_events(organization_id,provider_id,provider_event_id,source_sequence,payload,payload_sha256) VALUES($1,$2,gen_random_uuid(),1,'{}','test') RETURNING id`, org, item.provider).Scan(&inbox)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = db.Exec(`INSERT INTO observations(organization_id,inbox_event_id,provider_id,kind,transfer_reference,payment_reference,order_reference,amount_minor,occurred_at,source_sequence) VALUES($1,$2,$3,$4,'IMPORT-PAY-1','IMPORT-PAY-1','IMPORT-ORDER-1',700,$5,1)`, org, inbox, item.provider, item.kind, now)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	summary, err := Run(context.Background(), db, org, "", "latest-unscoped-test", now.Add(time.Hour), time.Now().Add(time.Second))
+	if err != nil || summary.OrderPayment != 1 || summary.PaymentSettlement != 1 || summary.Unmatched != 0 {
+		t.Fatalf("latest result=%+v err=%v", summary, err)
+	}
+	var scope string
+	var scenario sql.NullString
+	err = db.QueryRow(`SELECT scope,scenario_run_id FROM reconciliation_runs WHERE id=$1`, summary.RunID).Scan(&scope, &scenario)
+	if err != nil || scope != "LATEST_OBSERVATIONS" || scenario.Valid {
+		t.Fatalf("scope=%s scenario=%v err=%v", scope, scenario, err)
+	}
+}

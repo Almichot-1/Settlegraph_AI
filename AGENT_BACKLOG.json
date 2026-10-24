@@ -308,7 +308,8 @@
         "commit": null,
         "tests": [
           "TestConcurrentRunDeduplication on isolated PostgreSQL: 20 concurrent same-key runs -> one immutable run and two unique edges",
-          "tests/e2e_demo.py: historical run unchanged after late settlement"
+          "tests/e2e_demo.py: historical run unchanged after late settlement",
+          "TestLatestObservationsUsesUnscopedEvidence: latest scope selects unscoped records and stores NULL scenario_run_id"
         ],
         "runtime_verified": true
       }
@@ -334,7 +335,8 @@
         "tests": [
           "tests/contract_runtime.py: dashboard, account, order, payment and settlement responses match OpenAPI",
           "TestDemoIdentityRoleAndTenantBoundary: account pagination, nullable unobserved balances and scoped cursor",
-          "tests/e2e_demo.py: accepted/settled distinction and source freshness"
+          "tests/e2e_demo.py: accepted/settled distinction and source freshness",
+          "TestDemoIdentityRoleAndTenantBoundary: latest-observations POST queues without a demo scenario"
         ],
         "runtime_verified": true
       }

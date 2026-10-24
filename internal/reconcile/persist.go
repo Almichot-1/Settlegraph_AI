@@ -40,14 +40,16 @@ func Run(ctx context.Context, db *sql.DB, org, scenarioID, jobKey string, virtua
 		return Summary{}, err
 	}
 	var exists bool
-	if err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM scenario_runs WHERE id=$1 AND organization_id=$2)", scenarioID, org).Scan(&exists); err != nil {
-		return Summary{}, err
-	}
-	if !exists {
-		return Summary{}, sql.ErrNoRows
+	if scenarioID != "" {
+		if err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM scenario_runs WHERE id=$1 AND organization_id=$2)", scenarioID, org).Scan(&exists); err != nil {
+			return Summary{}, err
+		}
+		if !exists {
+			return Summary{}, sql.ErrNoRows
+		}
 	}
 	orders := []Order{}
-	rows, err := tx.QueryContext(ctx, "SELECT id,external_reference,amount_minor,currency FROM merchant_orders WHERE organization_id=$1 AND scenario_run_id=$2 ORDER BY id", org, scenarioID)
+	rows, err := tx.QueryContext(ctx, "SELECT id,external_reference,amount_minor,currency FROM merchant_orders WHERE organization_id=$1 AND scenario_run_id IS NOT DISTINCT FROM NULLIF($2,'')::uuid ORDER BY id", org, scenarioID)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -65,7 +67,7 @@ func Run(ctx context.Context, db *sql.DB, org, scenarioID, jobKey string, virtua
 		return Summary{}, err
 	}
 	events := []Observation{}
-	rows, err = tx.QueryContext(ctx, `SELECT id,kind,transfer_reference,COALESCE(payment_reference,''),COALESCE(order_reference,''),amount_minor,currency,occurred_at FROM observations WHERE organization_id=$1 AND scenario_run_id=$2 AND observed_at<=$3 ORDER BY occurred_at,source_sequence,id`, org, scenarioID, cutoff)
+	rows, err = tx.QueryContext(ctx, `SELECT id,kind,transfer_reference,COALESCE(payment_reference,''),COALESCE(order_reference,''),amount_minor,currency,occurred_at FROM observations WHERE organization_id=$1 AND scenario_run_id IS NOT DISTINCT FROM NULLIF($2,'')::uuid AND observed_at<=$3 ORDER BY occurred_at,source_sequence,id`, org, scenarioID, cutoff)
 	if err != nil {
 		return Summary{}, err
 	}
@@ -85,18 +87,24 @@ func Run(ctx context.Context, db *sql.DB, org, scenarioID, jobKey string, virtua
 	var coverageID string
 	var complete sql.NullTime
 	var sourceStatus string
-	err = tx.QueryRowContext(ctx, `SELECT id,complete_through,source_status FROM source_status_snapshots WHERE organization_id=$1 AND scenario_run_id=$2 AND provider_id='BANK_B' AND observed_at<=$3 ORDER BY observed_at DESC,id DESC LIMIT 1`, org, scenarioID, cutoff).Scan(&coverageID, &complete, &sourceStatus)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return Summary{}, err
+	if scenarioID != "" {
+		err = tx.QueryRowContext(ctx, `SELECT id,complete_through,source_status FROM source_status_snapshots WHERE organization_id=$1 AND scenario_run_id=$2 AND provider_id='BANK_B' AND observed_at<=$3 ORDER BY observed_at DESC,id DESC LIMIT 1`, org, scenarioID, cutoff).Scan(&coverageID, &complete, &sourceStatus)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return Summary{}, err
+		}
 	}
 	result := Evaluate(orders, events, virtualNow, complete.Time, complete.Valid && sourceStatus == "HEALTHY", time.Hour)
 	var summary Summary
+	scope := "SCENARIO_RUN"
+	if scenarioID == "" {
+		scope = "LATEST_OBSERVATIONS"
+	}
 	if existingStatus == "QUEUED" {
 		summary.RunID = existing.RunID
 		_, err = tx.ExecContext(ctx, "UPDATE reconciliation_runs SET status='RUNNING',snapshot_cutoff=$2 WHERE id=$1", summary.RunID, cutoff)
 	} else {
 		err = tx.QueryRowContext(ctx, `INSERT INTO reconciliation_runs(organization_id,scenario_run_id,scope,rules_version,status,snapshot_cutoff,job_key)
-	 VALUES($1,$2,'SCENARIO_RUN','mvp-v1','RUNNING',$3,$4) RETURNING id`, org, scenarioID, cutoff, jobKey).Scan(&summary.RunID)
+ VALUES($1,NULLIF($2,'')::uuid,$3,'mvp-v1','RUNNING',$4,$5) RETURNING id`, org, scenarioID, scope, cutoff, jobKey).Scan(&summary.RunID)
 	}
 	if err != nil {
 		return Summary{}, err
@@ -160,7 +168,7 @@ func upsertCase(ctx context.Context, tx *sql.Tx, org, runID, kind, paymentID, or
 	fingerprint := kind + ":" + paymentID
 	var caseID string
 	err := tx.QueryRowContext(ctx, `INSERT INTO investigation_cases(organization_id,scenario_run_id,kind,fingerprint,title,summary,severity)
- VALUES($1,$2,$3,$4,$5,$6,'MEDIUM') ON CONFLICT (organization_id,fingerprint) DO UPDATE SET fingerprint=EXCLUDED.fingerprint RETURNING id`, org, runID, kind, fingerprint, kind, "Synthetic provider observations require review").Scan(&caseID)
+	 VALUES($1,NULLIF($2,'')::uuid,$3,$4,$5,$6,'MEDIUM') ON CONFLICT (organization_id,fingerprint) DO UPDATE SET fingerprint=EXCLUDED.fingerprint RETURNING id`, org, runID, kind, fingerprint, kind, "Synthetic provider observations require review").Scan(&caseID)
 	if err != nil {
 		return err
 	}

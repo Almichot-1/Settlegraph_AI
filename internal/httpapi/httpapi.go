@@ -52,6 +52,7 @@ func (a API) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/jobs/{id}", a.getJob)
 	mux.HandleFunc("GET /v1/audit-events", a.auditEvents)
 	mux.HandleFunc("GET /v1/imports", a.listImports)
+	mux.HandleFunc("GET /v1/imports/{id}", a.getImport)
 	mux.HandleFunc("GET /v1/cases", a.cases)
 	mux.HandleFunc("GET /v1/cases/{caseId}", a.oneCase)
 	mux.HandleFunc("GET /v1/cases/{caseId}/evidence", a.caseEvidence)

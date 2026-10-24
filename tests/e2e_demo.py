@@ -230,4 +230,13 @@ expect(sum(item['external_reference'] == replay_ref for item in all_items('/v1/t
        'ten deliveries created more than one transaction')
 wait_for(lambda: len(runs(normal['id'])) > prior_run_count, 'outbox replay after worker restart')
 
-print('PASS: four scenarios, deterministic replay, historical runs, review, restart dedup, webhook rejection')
+status, latest_job, _ = api('/v1/reconciliation/runs', 'POST',
+                            {'scope':'LATEST_OBSERVATIONS'}, secrets.token_hex(12))
+expect(status == 202 and latest_job['scenario_run_id'] is None,
+       'latest observations incorrectly selected a demo scenario')
+def latest_completed():
+    status, item, _ = api('/v1/reconciliation/runs/' + latest_job['id'])
+    return status == 200 and item['status'] == 'COMPLETED' and item['scope'] == 'LATEST_OBSERVATIONS' and item['scenario_run_id'] is None
+wait_for(latest_completed, 'latest observations job')
+
+print('PASS: four scenarios, deterministic replay, latest scope, historical runs, review, restart dedup, webhook rejection')
