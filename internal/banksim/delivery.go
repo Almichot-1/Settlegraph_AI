@@ -8,10 +8,47 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"time"
 )
+
+// DeliverLoop retries durable provider events after an API outage or a
+// BankSim restart. Product-side event ID deduplication makes retries safe.
+func (h HTTP) DeliverLoop(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			rows, err := h.Ledger.DB.QueryContext(ctx, "SELECT DISTINCT scenario_id FROM sim_events WHERE delivery_status='PENDING' LIMIT 50")
+			if err != nil {
+				slog.Warn("provider delivery scan failed", "error", err)
+				continue
+			}
+			ids := []string{}
+			for rows.Next() {
+				var id string
+				if err := rows.Scan(&id); err != nil {
+					slog.Warn("provider delivery scan failed", "error", err)
+					break
+				}
+				ids = append(ids, id)
+			}
+			rows.Close()
+			for _, id := range ids {
+				attemptCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				if err := h.DeliverPending(attemptCtx, id); err != nil {
+					slog.Warn("provider event delivery deferred", "run_id", id, "error", err)
+				}
+				cancel()
+			}
+		}
+	}
+}
 
 // DeliverPending sends stored provider observations after the ledger transaction
 // commits. A failed delivery remains pending for a later retry or provider backfill.

@@ -33,12 +33,16 @@ func Run(role config.Role) error {
 	db.SetMaxOpenConns(4)
 
 	mux := http.NewServeMux()
+	var bank banksim.HTTP
+	var productAPI httpapi.API
 	mux.Handle("/health/", health.Handler(string(role), db))
 	if role == config.API {
-		mux.Handle("/v1/", (httpapi.API{DB: db, Config: cfg}).Handler())
+		productAPI = httpapi.API{DB: db, Config: cfg}
+		mux.Handle("/v1/", productAPI.Handler())
 	}
 	if role == config.BankSim {
-		bankHandler := (banksim.HTTP{Ledger: banksim.Ledger{DB: db}, Config: cfg}).Handler()
+		bank = banksim.HTTP{Ledger: banksim.Ledger{DB: db}, Config: cfg}
+		bankHandler := bank.Handler()
 		mux.Handle("/provider/", bankHandler)
 		mux.Handle("/admin/", bankHandler)
 		mux.Handle("/evaluator/", bankHandler)
@@ -54,6 +58,12 @@ func Run(role config.Role) error {
 	defer stop()
 	if role == config.Worker {
 		go jobs.Loop(ctx, db)
+	}
+	if role == config.BankSim {
+		go bank.DeliverLoop(ctx)
+	}
+	if role == config.API {
+		go productAPI.CoverageLoop(ctx)
 	}
 	go func() {
 		<-ctx.Done()

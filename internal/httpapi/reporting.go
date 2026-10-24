@@ -1,18 +1,22 @@
 package httpapi
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
 func money(v int64) map[string]string {
 	return map[string]string{"minor_units": strconv.FormatInt(v, 10), "currency": "ETB"}
 }
-func limitCursor(w http.ResponseWriter, r *http.Request) (int, string, bool) {
+func (a API) limitCursor(w http.ResponseWriter, r *http.Request, org string) (int, string, bool) {
 	limit := 50
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		n, err := strconv.Atoi(raw)
@@ -24,16 +28,43 @@ func limitCursor(w http.ResponseWriter, r *http.Request) (int, string, bool) {
 	}
 	cursor := ""
 	if raw := r.URL.Query().Get("cursor"); raw != "" {
-		data, err := base64.RawURLEncoding.DecodeString(raw)
-		if err != nil || !demoUUID.Match(data) {
+		var err error
+		cursor, err = a.parseCursor(r, org, raw)
+		if err != nil || !demoUUID.MatchString(cursor) {
 			writeError(w, 400, "BAD_REQUEST", "Invalid cursor", reqID(r))
 			return 0, "", false
 		}
-		cursor = string(data)
 	}
 	return limit, cursor, true
 }
-func nextCursor(id string) string { return base64.RawURLEncoding.EncodeToString([]byte(id)) }
+
+func (a API) cursorSignature(r *http.Request, org, id string) []byte {
+	query := r.URL.Query()
+	query.Del("cursor")
+	query.Del("limit")
+	mac := hmac.New(sha256.New, []byte(a.Config.DemoJWTSecret))
+	_, _ = mac.Write([]byte(org + "\n" + r.URL.Path + "\n" + query.Encode() + "\n" + id))
+	return mac.Sum(nil)
+}
+func (a API) nextCursor(r *http.Request, org, id string) string {
+	value := id + "." + hex.EncodeToString(a.cursorSignature(r, org, id))
+	return base64.RawURLEncoding.EncodeToString([]byte(value))
+}
+func (a API) parseCursor(r *http.Request, org, raw string) (string, error) {
+	data, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil || len(data) > 256 {
+		return "", errors.New("invalid cursor")
+	}
+	id, signature, found := strings.Cut(string(data), ".")
+	if !found || id == "" {
+		return "", errors.New("invalid cursor")
+	}
+	provided, err := hex.DecodeString(signature)
+	if err != nil || !hmac.Equal(provided, a.cursorSignature(r, org, id)) {
+		return "", errors.New("invalid cursor")
+	}
+	return id, nil
+}
 
 func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	org, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER")
@@ -123,7 +154,7 @@ func (a API) cases(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit, cursor, ok := limitCursor(w, r)
+	limit, cursor, ok := a.limitCursor(w, r, org)
 	if !ok {
 		return
 	}
@@ -142,7 +173,7 @@ func (a API) cases(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(items) == limit {
-			next = nextCursor(items[len(items)-1]["id"].(string))
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
 			break
 		}
 		items = append(items, item)
@@ -191,7 +222,7 @@ func (a API) caseEvidence(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "NOT_FOUND", "Case not found", reqID(r))
 		return
 	}
-	limit, cursor, ok := limitCursor(w, r)
+	limit, cursor, ok := a.limitCursor(w, r, org)
 	if !ok {
 		return
 	}
@@ -210,7 +241,7 @@ func (a API) caseEvidence(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(items) == limit {
-			next = nextCursor(items[len(items)-1]["id"].(string))
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
 			break
 		}
 		item, err := a.evidenceRecord(r, org, kind, evidenceID)

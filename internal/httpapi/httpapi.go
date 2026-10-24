@@ -5,7 +5,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"database/sql"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -266,12 +265,12 @@ func (a API) providers(w http.ResponseWriter, r *http.Request) {
 	limit := 50
 	cursor := ""
 	if raw := r.URL.Query().Get("cursor"); raw != "" {
-		decoded, err := base64.RawURLEncoding.DecodeString(raw)
-		if err != nil || len(decoded) == 0 || len(decoded) > 128 {
+		var err error
+		cursor, err = a.parseCursor(r, org, raw)
+		if err != nil || len(cursor) == 0 || len(cursor) > 128 {
 			writeError(w, 400, "BAD_REQUEST", "Invalid cursor", reqID(r))
 			return
 		}
-		cursor = string(decoded)
 	}
 	if raw := r.URL.Query().Get("limit"); raw != "" {
 		n, err := strconv.Atoi(raw)
@@ -297,7 +296,7 @@ func (a API) providers(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(items) == limit {
-			next = base64.RawURLEncoding.EncodeToString([]byte(items[len(items)-1]["id"].(string)))
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
 			break
 		}
 		var observed any

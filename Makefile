@@ -1,4 +1,4 @@
-.PHONY: build lint test test-integration test-e2e contract-check migrate seed up down smoke init-demo-env
+.PHONY: build lint test test-integration test-e2e test-contract-runtime contract-check migrate seed up down smoke init-demo-env
 
 init-demo-env:
 	python validation/init_demo_env.py
@@ -20,6 +20,10 @@ test-integration:
 
 test-e2e:
 	python tests/e2e_demo.py
+	python tests/e2e_delivery_recovery.py
+
+test-contract-runtime:
+	.venv/bin/python tests/contract_runtime.py
 
 contract-check:
 	python validation/validate_pack.py

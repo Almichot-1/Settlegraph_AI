@@ -50,7 +50,8 @@
         "commit": null,
         "tests": [],
         "runtime_verified": false
-      }
+      },
+      "blocker": "Next.js and Flutter teams are developing separately; signed fixture acknowledgment must come from them."
     },
     {
       "id": "SG-003",
@@ -91,11 +92,14 @@
       "acceptance": [
         "401 invalid token, 403 insufficient role, 404 foreign tenant resources, 400 malformed JSON; no leaked secrets."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "TestDemoIdentityRoleAndTenantBoundary on isolated PostgreSQL: 401 missing/invalid token, 403 viewer mutation, 404 foreign tenant, 400 malformed JSON",
+          "internal/config tests: production auth fails closed"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -228,11 +232,14 @@
       "acceptance": [
         "Outage creates `INCOMPLETE_SOURCE`, not false missing funds; backfill restores coverage and no double-counting."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "tests/e2e_demo.py: provider outage yields no false missing case and recovery restores settlement",
+          "tests/e2e_delivery_recovery.py: pending provider event is redelivered after BankSim restart; inbox, healthy watermark, cursor and reconciliation recover"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -297,11 +304,14 @@
       "acceptance": [
         "Re-run doesn't rewrite history; run deduplication and unique allocations enforced under concurrency."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "TestConcurrentRunDeduplication on isolated PostgreSQL: 20 concurrent same-key runs -> one immutable run and two unique edges",
+          "tests/e2e_demo.py: historical run unchanged after late settlement"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -458,7 +468,8 @@
         "commit": null,
         "tests": [],
         "runtime_verified": false
-      }
+      },
+      "blocker": "Cross-client smoke requires the separately developed Next.js and Flutter applications."
     },
     {
       "id": "SG-021",
@@ -474,12 +485,13 @@
       "acceptance": [
         "Reproducible deployment, full smoke under cloud settings and tested local/offline fallback."
       ],
-      "status": "NOT_STARTED",
+      "status": "DEFERRED",
       "evidence": {
         "commit": null,
         "tests": [],
         "runtime_verified": false
-      }
+      },
+      "blocker": "User stated there is no AWS deployment window; keep local deployment ready and defer cloud rollout."
     },
     {
       "id": "SG-022",
@@ -497,12 +509,13 @@
       "acceptance": [
         "Two back-to-back fresh-seed demonstrations complete; known limitations written; build tagged; no unverified claims."
       ],
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "evidence": {
         "commit": null,
         "tests": [],
         "runtime_verified": false
-      }
+      },
+      "blocker": "Final acceptance requires cross-client smoke and the deferred AWS gate."
     }
   ]
 }

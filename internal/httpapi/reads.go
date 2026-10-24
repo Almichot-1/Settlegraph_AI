@@ -44,7 +44,7 @@ func (a API) listOrders(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit, cursor, ok := limitCursor(w, r)
+	limit, cursor, ok := a.limitCursor(w, r, org)
 	if !ok {
 		return
 	}
@@ -71,7 +71,7 @@ func (a API) listOrders(w http.ResponseWriter, r *http.Request) {
 	var next any
 	if len(ids) > limit {
 		ids = ids[:limit]
-		next = nextCursor(ids[len(ids)-1])
+		next = a.nextCursor(r, org, ids[len(ids)-1])
 	}
 	items := []map[string]any{}
 	for _, id := range ids {
@@ -147,7 +147,7 @@ func (a API) listObservations(w http.ResponseWriter, r *http.Request, recordType
 	if !ok {
 		return
 	}
-	limit, cursor, ok := limitCursor(w, r)
+	limit, cursor, ok := a.limitCursor(w, r, org)
 	if !ok {
 		return
 	}
@@ -179,7 +179,7 @@ func (a API) listObservations(w http.ResponseWriter, r *http.Request, recordType
 	var next any
 	if len(ids) > limit {
 		ids = ids[:limit]
-		next = nextCursor(ids[len(ids)-1])
+		next = a.nextCursor(r, org, ids[len(ids)-1])
 	}
 	items := []map[string]any{}
 	for _, id := range ids {
@@ -252,7 +252,7 @@ func (a API) listRuns(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	limit, cursor, ok := limitCursor(w, r)
+	limit, cursor, ok := a.limitCursor(w, r, org)
 	if !ok {
 		return
 	}
@@ -271,7 +271,7 @@ func (a API) listRuns(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if len(items) == limit {
-			next = nextCursor(items[len(items)-1]["id"].(string))
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
 			break
 		}
 		items = append(items, item)

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -219,7 +220,17 @@ func (a API) advanceDemoScenario(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	for _, provider := range []string{"BANK_A", "BANK_B"} {
-		_ = a.syncCoverage(r, org, bankID, provider, bank.VirtualNow)
+		if syncErr := a.syncCoverage(r, org, bankID, provider, bank.VirtualNow); syncErr != nil {
+			slog.Warn("provider coverage is incomplete", "run_id", id, "provider", provider, "error", syncErr)
+			if _, err = a.DB.ExecContext(r.Context(), "INSERT INTO source_status_snapshots(organization_id,provider_id,source_status,scenario_run_id) VALUES($1,$2,'STALE',$3)", org, provider, id); err != nil {
+				writeError(w, 503, "SERVICE_UNAVAILABLE", "Coverage status unavailable", reqID(r))
+				return
+			}
+			if _, err = a.DB.ExecContext(r.Context(), "UPDATE provider_sources SET sync_status='STALE' WHERE organization_id=$1 AND id=$2", org, provider); err != nil {
+				writeError(w, 503, "SERVICE_UNAVAILABLE", "Coverage status unavailable", reqID(r))
+				return
+			}
+		}
 	}
 	var cutoff time.Time
 	if err = a.DB.QueryRowContext(r.Context(), "SELECT clock_timestamp()").Scan(&cutoff); err != nil {
@@ -243,6 +254,7 @@ func (a API) syncCoverage(r *http.Request, org, bankRun, provider string, virtua
 		Items []struct {
 			EventID       string `json:"event_id"`
 			ScenarioRunID string `json:"scenario_run_id"`
+			Sequence      int64  `json:"sequence"`
 		} `json:"items"`
 		NextCursor      *string    `json:"next_cursor"`
 		SourceStatus    string     `json:"source_status"`
@@ -254,6 +266,7 @@ func (a API) syncCoverage(r *http.Request, org, bankRun, provider string, virtua
 	}
 	client := http.Client{Timeout: 3 * time.Second}
 	cursor := ""
+	var lastSequence int64
 	for pages := 0; pages < 100; pages++ {
 		requestURL := baseURL
 		if cursor != "" {
@@ -276,6 +289,7 @@ func (a API) syncCoverage(r *http.Request, org, bankRun, provider string, virtua
 			Items []struct {
 				EventID       string `json:"event_id"`
 				ScenarioRunID string `json:"scenario_run_id"`
+				Sequence      int64  `json:"sequence"`
 			} `json:"items"`
 			NextCursor      *string    `json:"next_cursor"`
 			SourceStatus    string     `json:"source_status"`
@@ -300,6 +314,9 @@ func (a API) syncCoverage(r *http.Request, org, bankRun, provider string, virtua
 			if event.ScenarioRunID != bankRun {
 				continue
 			}
+			if event.Sequence > lastSequence {
+				lastSequence = event.Sequence
+			}
 			var exists bool
 			if err = a.DB.QueryRowContext(r.Context(), "SELECT EXISTS(SELECT 1 FROM inbox_events WHERE organization_id=$1 AND provider_id=$2 AND provider_event_id=$3)", org, provider, event.EventID).Scan(&exists); err != nil || !exists {
 				return errors.New("provider event not ingested")
@@ -322,7 +339,9 @@ func (a API) syncCoverage(r *http.Request, org, bankRun, provider string, virtua
 	}
 	_, err := a.DB.ExecContext(r.Context(), "INSERT INTO source_status_snapshots(organization_id,provider_id,source_status,complete_through,scenario_run_id) VALUES($1,$2,'HEALTHY',$3,$4)", org, provider, through, productRun)
 	if err == nil {
-		_, err = a.DB.ExecContext(r.Context(), "UPDATE provider_sources SET sync_status='HEALTHY',last_observed_at=now() WHERE organization_id=$1 AND id=$2", org, provider)
+		_, err = a.DB.ExecContext(r.Context(), `UPDATE provider_sources SET sync_status='HEALTHY',last_observed_at=now(),
+ cursor_value=CASE WHEN $3::bigint>COALESCE(NULLIF(cursor_value,'')::bigint,0) THEN $3::text ELSE cursor_value END
+ WHERE organization_id=$1 AND id=$2`, org, provider, lastSequence)
 	}
 	return err
 }

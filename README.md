@@ -43,7 +43,9 @@ A **simulated** two-bank payment ecosystem (`BankSim`), and an independently dep
 From the pack directory:
 
 ```bash
-python validation/validate_pack.py
+python -m venv .venv
+.venv/bin/pip install -r validation/requirements.txt
+.venv/bin/python validation/validate_pack.py
 ```
 
 ## Run the local backend
@@ -59,6 +61,7 @@ make migrate
 make seed
 make smoke
 make test-e2e
+make test-contract-runtime
 ```
 
 `make up` generates an ignored `.env` containing local synthetic service tokens, then starts the API on `127.0.0.1:8080`, BankSim on `127.0.0.1:8082`, a worker and two separate PostgreSQL databases. Migrations and seeds can be rerun. `make down` stops the stack and retains volumes. The API provides demo login, scenario orchestration, signed event ingestion, two-stage reconciliation, read APIs, case review and an evidence-linked offline investigator. The end-to-end script replays all four scenarios.
