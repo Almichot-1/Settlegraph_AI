@@ -1,8 +1,8 @@
 {
   "project": "SettleGraph AI",
   "version": "2.1",
-  "status": "SPECIFICATION_ONLY",
-  "actual_tests_executed": false,
+  "status": "BACKEND_IMPLEMENTATION_IN_PROGRESS",
+  "actual_tests_executed": true,
   "contract": "contracts/settlegraph-public.openapi.yaml",
   "tickets": [
     {
@@ -18,11 +18,16 @@
       "acceptance": [
         "Clean checkout builds three binaries, `go test ./...`, `go vet ./...`, `docker compose up` starts health."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "go test ./...",
+          "go vet ./...",
+          "make up",
+          "make smoke"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -40,7 +45,7 @@
       "acceptance": [
         "`python validation/validate_pack.py` passes; both clients render a fixture; written acknowledgment recorded."
       ],
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -61,11 +66,14 @@
       "acceptance": [
         "Fresh empty databases migrate; rerunning migrations is safe; seed yields reproducible logical initial state."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "fresh database migrations twice",
+          "seed twice; balanced opening journal"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -83,7 +91,7 @@
       "acceptance": [
         "401 invalid token, 403 insufficient role, 404 foreign tenant resources, 400 malformed JSON; no leaked secrets."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -104,11 +112,13 @@
       "acceptance": [
         "Every journal sum=0; insufficient funds leave balances unchanged; 100 concurrent attempts cannot overspend."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "TestConcurrentLedgerEffects on isolated PostgreSQL: 100 same-key + 100 distinct concurrent attempts; balanced journals"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -125,11 +135,13 @@
       "acceptance": [
         "A synthetic 2,500 ETB payment and later settlement have correct postings; same idempotency key produces one financial effect."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "TestConcurrentLedgerEffects on fresh isolated PostgreSQL: CREATED, ACCEPTED, SETTLEMENT_PENDING, SETTLED, FAILED, invalid transition, failed retry without journal"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -146,11 +158,13 @@
       "acceptance": [
         "Advance with stale `expected_step` is 412; scenario repeat yields same logical events independent of generated IDs."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "tests/e2e_demo.py: same-seed logical replay and stale expected_step=412"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -167,11 +181,13 @@
       "acceptance": [
         "Valid signature accepted; tampered/expired signature rejected; replay preserves stable event ID."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "tests/e2e_demo.py: signed delivery, duplicate replay, tampered and expired rejection"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -189,11 +205,13 @@
       "acceptance": [
         "10 deliveries of identical event create exactly one logical observation; crash/restart safely replays."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "tests/e2e_demo.py: 10 signed identical deliveries -> one observation; outbox job completes after worker stop/start"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -210,7 +228,7 @@
       "acceptance": [
         "Outage creates `INCOMPLETE_SOURCE`, not false missing funds; backfill restores coverage and no double-counting."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -231,10 +249,12 @@
       "acceptance": [
         "Missing/ambiguous ref creates no automatic match; same amount across unrelated orders never auto-matches."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
+        "tests": [
+          "go test ./internal/reconcile: exact-reference and ambiguity cases"
+        ],
         "runtime_verified": false
       }
     },
@@ -253,10 +273,12 @@
       "acceptance": [
         "Accepted is never rendered as settled; 1 minor-unit discrepancy is detected; settlement-first ordering converges."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
+        "tests": [
+          "go test ./internal/reconcile: one-unit mismatch, settlement-first convergence, source watermark"
+        ],
         "runtime_verified": false
       }
     },
@@ -275,7 +297,7 @@
       "acceptance": [
         "Re-run doesn't rewrite history; run deduplication and unique allocations enforced under concurrency."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -297,7 +319,7 @@
       "acceptance": [
         "JSON matches OpenAPI examples, pagination bound to tenant/filter, web shows real source freshness."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -318,7 +340,7 @@
       "acceptance": [
         "Web and Flutter read same case; foreign tenant returns 404; late settlement becomes `EVIDENCE_UPDATED`."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -339,7 +361,7 @@
       "acceptance": [
         "Matching version resolves with reason, stale version 412, same retry creates one decision; Flutter/web agree."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -360,7 +382,7 @@
       "acceptance": [
         "Fabricated evidence ID rejected; AI cannot set payment/settlement statuses, close case, or invoke transfer API."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -382,7 +404,7 @@
       "acceptance": [
         "Authorized owner can create/advance scenarios; viewer cannot; request and response exactly match OpenAPI."
       ],
-      "status": "NOT_STARTED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [],
@@ -405,11 +427,13 @@
       "acceptance": [
         "Four replay fixtures green, including old-run preservation and later settlement reconciliation."
       ],
-      "status": "NOT_STARTED",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "tests/e2e_demo.py: all four scenarios, late evidence, historical run preservation, outage recovery"
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -429,7 +453,7 @@
       "acceptance": [
         "One video/log trace with shared case ID, user ID, timestamps, response codes and no synthetic-vs-real ambiguity."
       ],
-      "status": "NOT_STARTED",
+      "status": "BLOCKED",
       "evidence": {
         "commit": null,
         "tests": [],

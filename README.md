@@ -1,7 +1,7 @@
 # SettleGraph AI — Solo Backend Execution Pack
 
 **Prepared:** 24 October 2026 (v2.1 PM extension)  
-**Status:** Design specification + static contracts + synthetic fixtures; **not an implemented application**.  
+**Status:** Local synthetic backend implemented for four demo scenarios; the ticket board tracks tested work and remaining gaps.
 **Purpose:** Give one Go/backend implementation agent a phased build plan while Next.js and Flutter engineers build against stable HTTP contracts.
 
 ## Open these files in this order
@@ -38,7 +38,7 @@ A **simulated** two-bank payment ecosystem (`BankSim`), and an independently dep
 | Gate 7 | Four fault/replay scenarios and case lifecycle |
 | Gate 8 | Optional AWS deployment and operational smoke tests |
 
-## Commands to validate **this specification pack**
+## Validate the contracts
 
 From the pack directory:
 
@@ -46,7 +46,26 @@ From the pack directory:
 python validation/validate_pack.py
 ```
 
-Requires PyYAML and jsonschema. `validation/build_contracts.py` generates the YAML and schema source; `validation/generate_fixtures.py` regenerates synthetic fixtures. **Do not run generators after UI contract freeze unless you intend to change the corresponding YAML and mocks**. The validation script checks schema references, endpoint inventory, JSON samples and AI evidence mismatch fixtures. It does **not** verify that Go code or SQL migrations execute because backend code does not exist in this pack.
+## Run the local backend
+
+Go 1.27, Docker Compose and Python 3 are required. Contract validation needs PyYAML and jsonschema (available in the local `.venv` when present). Run:
+
+```bash
+make build
+make test
+make lint
+make up
+make migrate
+make seed
+make smoke
+make test-e2e
+```
+
+`make up` generates an ignored `.env` containing local synthetic service tokens, then starts the API on `127.0.0.1:8080`, BankSim on `127.0.0.1:8082`, a worker and two separate PostgreSQL databases. Migrations and seeds can be rerun. `make down` stops the stack and retains volumes. The API provides demo login, scenario orchestration, signed event ingestion, two-stage reconciliation, read APIs, case review and an evidence-linked offline investigator. The end-to-end script replays all four scenarios.
+
+The local databases use trust authentication only on unexposed Compose networks. Production API startup is intentionally disabled until a production identity provider is configured. AWS deployment, Bedrock access, cross-client acceptance and the optional S3 import flow remain open; see `docs/implementation-progress.md` and `AGENT_BACKLOG.json`. `GET /v1/accounts` and `GET /v1/imports` currently return empty pages because account observation and import ingestion are not implemented.
+
+`validation/build_contracts.py` and `validation/generate_fixtures.py` regenerate contract assets; do not run them after client freeze without reviewing the changes. `validation/validate_pack.py` checks contracts and fixtures, while Go and end-to-end commands check runtime behavior.
 
 ## Key conventions
 
@@ -66,9 +85,9 @@ A customer attempts a simulated 2,500 ETB payment, BankSim accepts it and delays
 
 ## Project-manager operational control (v2.1 addition)
 
-Read `PROJECT_MANAGER_DELIVERY_PLAYBOOK.md` **after** the architecture blueprint. It adds the scope charter, critical-path gates, stable SG-001 through SG-022 tickets, two delivery schedules (48-hour compressed and 10-day preparation), RACI/owner handoffs, quantified risk triggers, acceptance checklist, status reporting template and 5-minute judge demo. The plan does **not** claim backend code or real bank integrations exist.
+Read `PROJECT_MANAGER_DELIVERY_PLAYBOOK.md` **after** the architecture blueprint. It adds the scope charter, critical-path gates, stable SG-001 through SG-022 tickets, two delivery schedules (48-hour compressed and 10-day preparation), RACI/owner handoffs, quantified risk triggers, acceptance checklist, status reporting template and 5-minute judge demo. The implementation uses synthetic banks and does not claim real bank integrations.
 
-`AGENT_BACKLOG.json` is a machine-readable, dependency-checked list of the 22 SG-001–SG-022 tickets. Its initial statuses are all `NOT_STARTED`; do not mistake it for implementation progress. Regenerate with `python validation/build_agent_backlog.py`.
+`AGENT_BACKLOG.json` tracks the 22 SG-001–SG-022 tickets and actual test evidence. Regenerating it with `validation/build_agent_backlog.py` resets progress; review changes before doing so.
 
 
 ## Autonomous execution (optional)

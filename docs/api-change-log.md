@@ -1,10 +1,11 @@
 # HTTP contract change log
 
-Contract state: **2.0.0-draft; proposed, not implemented.** Normative file: `contracts/settlegraph-public.openapi.yaml`.
+Contract state: **2.0.0-draft; partially implemented.** Normative public file: `contracts/settlegraph-public.openapi.yaml`. Client acknowledgment is still pending.
 
 | Date (UTC) | Change ID | operationId | Compatibility | Client impact | Reviewed by |
 |---|---|---|---|---|---|
 | 2026-10-24 | BASELINE | All 39 public operations | Initial definition | Next.js and Flutter build mocks from YAML | Awaiting team acknowledgment |
+| 2026-10-24 | INT-001 | BankSim `listProviderEvents` | Backward compatible optional `scenario_run_id` query filter | No public client impact; prevents coverage from mixing scenario runs | Backend local test; client acknowledgment not required for internal route |
 
 ## New change request template
 

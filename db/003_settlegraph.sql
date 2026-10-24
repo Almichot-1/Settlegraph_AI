@@ -1,0 +1,3 @@
+ALTER TABLE merchant_orders DROP CONSTRAINT IF EXISTS merchant_orders_organization_id_external_reference_key;
+CREATE UNIQUE INDEX merchant_order_run_reference ON merchant_orders(organization_id,scenario_run_id,external_reference) WHERE scenario_run_id IS NOT NULL;
+CREATE UNIQUE INDEX merchant_order_unscoped_reference ON merchant_orders(organization_id,external_reference) WHERE scenario_run_id IS NULL;

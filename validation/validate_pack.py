@@ -105,8 +105,8 @@ check(len([x for x in catalog['cases'] if x['expected']['ledger_balanced']])==4,
 backlog=json.loads((ROOT/'AGENT_BACKLOG.json').read_text())
 tickets=backlog['tickets']; taskids=[t['id'] for t in tickets]
 check(len(tickets)==22 and len(set(taskids))==22,'PM backlog: expected 22 unique tickets')
-check(all(t['status']=='NOT_STARTED' for t in tickets) if backlog['actual_tests_executed'] is False else True,
-      'PM backlog: initial status must not claim tests have executed')
+check(all(t['status'] not in {'TESTED','ACCEPTED'} for t in tickets) if backlog['actual_tests_executed'] is False else True,
+      'PM backlog: ticket must not claim TESTED/ACCEPTED before tests execute')
 check(all(bool(t['acceptance']) for t in tickets),'PM backlog: missing ticket acceptance')
 check(all(set(t['dependencies']).issubset(taskids) for t in tickets),'PM backlog: unknown dependency')
 check('PROJECT_MANAGER_DELIVERY_PLAYBOOK.md' in [x.name for x in ROOT.iterdir()],'PM playbook missing')

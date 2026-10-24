@@ -6,8 +6,11 @@ The authoritative starting risk list is in `PROJECT_MANAGER_DELIVERY_PLAYBOOK.md
 |---|---|---|---|---|
 | R-01 Solo backend scope overload | HIGH | Project lead | Reassess at each gate; protect first E2E slice | OPEN |
 | R-02 Bedrock account/model unavailable | MEDIUM | Backend | Verify access; preserve labeled local stub | OPEN |
-| R-04 Ledger concurrency correctness | CRITICAL if defect exists | Backend | Must execute concurrent transfer tests | NOT_TESTED |
+| R-04 Ledger concurrency correctness | MEDIUM residual | Backend | Isolated PostgreSQL test passed: 100 same-key retries and 100 distinct attempts; repeat after ledger lifecycle changes | MITIGATED_LOCAL |
 | R-06 OpenAPI breaking changes | HIGH | Project lead | Contract freeze + client acknowledgment | OPEN |
 | R-09 Live demo network instability | MEDIUM | Project lead | Local compose recovery rehearsal | OPEN |
+| R-10 Local trust authentication copied to deployment | HIGH | Backend | Compose DB ports are unpublished and DB networks private; replace trust with secret-managed authentication before any deployment | OPEN |
+| R-11 Provider delivery failure leaves source incomplete | HIGH | Backend | Coverage refuses completion when signed event is absent; automatic provider backfill and failed-delivery replay remain to implement | OPEN |
+| R-12 Unfinished public import routes | MEDIUM | Backend | Three optional P2 import routes are not registered; do not promise CSV/S3 fallback to clients yet | OPEN |
 
 Create a new row immediately for any newly discovered blocker, severity, owner, and reproducible evidence.

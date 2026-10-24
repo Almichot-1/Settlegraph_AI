@@ -94,6 +94,13 @@ paths:
       - $ref: '#/components/parameters/InstitutionId'
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Cursor'
+      - name: scenario_run_id
+        in: query
+        required: false
+        description: Restrict events and completion watermark to one synthetic scenario run.
+        schema:
+          type: string
+          format: uuid
   /provider/v1/transfers:
     post:
       tags:

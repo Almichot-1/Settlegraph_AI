@@ -1,0 +1,109 @@
+# Synthetic local demo only. Database networks and volumes are distinct.
+# PostgreSQL trust authentication is confined to unexposed Compose networks;
+# configure real credentials before any deployment beyond a local workstation.
+services:
+  product-db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: settlegraph
+      POSTGRES_USER: settlegraph
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - product_data:/var/lib/postgresql/data
+      - ./db:/migrations:ro
+    networks: [product-db-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U settlegraph -d settlegraph"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  banksim-db:
+    image: postgres:17.6-alpine
+    environment:
+      POSTGRES_DB: banksim
+      POSTGRES_USER: banksim
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - banksim_data:/var/lib/postgresql/data
+      - ./db:/migrations:ro
+    networks: [banksim-db-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U banksim -d banksim"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build:
+      context: .
+      args: {TARGET: api}
+    environment:
+      APP_MODE: demo
+      DEMO_ACCESS_CODE: ${DEMO_ACCESS_CODE:?run make init-demo-env}
+      DEMO_JWT_SECRET: ${DEMO_JWT_SECRET:?run make init-demo-env}
+      BANKSIM_ADMIN_TOKEN: ${BANKSIM_ADMIN_TOKEN:?run make init-demo-env}
+      BANKSIM_PROVIDER_TOKEN: ${BANKSIM_PROVIDER_TOKEN:?run make init-demo-env}
+      BANKSIM_WEBHOOK_SECRET: ${BANKSIM_WEBHOOK_SECRET:?run make init-demo-env}
+      BANKSIM_ADMIN_URL: http://banksim:8082
+      PRODUCT_DATABASE_URL: postgres://settlegraph@product-db:5432/settlegraph?sslmode=disable
+      LISTEN_ADDR: :8080
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      product-db: {condition: service_healthy}
+    networks: [product-db-net, provider-http-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    build:
+      context: .
+      args: {TARGET: worker}
+    environment:
+      APP_MODE: demo
+      PRODUCT_DATABASE_URL: postgres://settlegraph@product-db:5432/settlegraph?sslmode=disable
+      LISTEN_ADDR: :8081
+    depends_on:
+      product-db: {condition: service_healthy}
+    networks: [product-db-net, provider-http-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  banksim:
+    build:
+      context: .
+      args: {TARGET: banksim}
+    environment:
+      APP_MODE: demo
+      BANKSIM_DATABASE_URL: postgres://banksim@banksim-db:5432/banksim?sslmode=disable
+      BANKSIM_ADMIN_TOKEN: ${BANKSIM_ADMIN_TOKEN:?run make init-demo-env}
+      BANKSIM_PROVIDER_TOKEN: ${BANKSIM_PROVIDER_TOKEN:?run make init-demo-env}
+      BANKSIM_EVALUATOR_TOKEN: ${BANKSIM_EVALUATOR_TOKEN:?run make init-demo-env}
+      BANKSIM_WEBHOOK_SECRET: ${BANKSIM_WEBHOOK_SECRET:?run make init-demo-env}
+      PRODUCT_WEBHOOK_URL: http://api:8080/v1/integrations/banksim/events
+      LISTEN_ADDR: :8082
+    ports: ["127.0.0.1:8082:8082"]
+    depends_on:
+      banksim-db: {condition: service_healthy}
+    networks: [banksim-db-net, provider-http-net]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8082/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  product_data:
+  banksim_data:
+networks:
+  product-db-net:
+    internal: true
+  banksim-db-net:
+    internal: true
+  provider-http-net:
