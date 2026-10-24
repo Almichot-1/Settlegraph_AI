@@ -71,8 +71,7 @@
       "evidence": {
         "commit": null,
         "tests": [
-          "fresh database migrations twice",
-          "seed twice; balanced opening journal"
+          "fresh database migrations through 005 twice; seed twice; balanced opening journal"
         ],
         "runtime_verified": true
       }
@@ -332,8 +331,12 @@
       "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "tests/contract_runtime.py: dashboard, account, order, payment and settlement responses match OpenAPI",
+          "TestDemoIdentityRoleAndTenantBoundary: account pagination, nullable unobserved balances and scoped cursor",
+          "tests/e2e_demo.py: accepted/settled distinction and source freshness"
+        ],
+        "runtime_verified": true
       }
     },
     {

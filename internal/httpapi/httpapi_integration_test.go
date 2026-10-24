@@ -98,4 +98,27 @@ func TestDemoIdentityRoleAndTenantBoundary(t *testing.T) {
 			t.Fatalf("cursor scope path=%s status=%d want=%d", path, out.Code, want)
 		}
 	}
+	accountsReq := httptest.NewRequest("GET", "/v1/accounts?limit=1", nil)
+	accountsReq.Header.Set("Authorization", "Bearer "+viewer)
+	accountsReq.Header.Set("X-Organization-Id", org)
+	accountsPage := httptest.NewRecorder()
+	handler.ServeHTTP(accountsPage, accountsReq)
+	var accounts struct {
+		Items      []map[string]any `json:"items"`
+		NextCursor string           `json:"next_cursor"`
+	}
+	if accountsPage.Code != 200 || json.Unmarshal(accountsPage.Body.Bytes(), &accounts) != nil || len(accounts.Items) != 1 || accounts.NextCursor == "" {
+		t.Fatalf("known account page invalid: %d %s", accountsPage.Code, accountsPage.Body.String())
+	}
+	if accounts.Items[0]["observed_balance"] != nil || accounts.Items[0]["last_observed_at"] != nil {
+		t.Fatalf("unobserved balance was presented as known: %v", accounts.Items[0])
+	}
+	secondReq := httptest.NewRequest("GET", "/v1/accounts?limit=1&cursor="+accounts.NextCursor, nil)
+	secondReq.Header.Set("Authorization", "Bearer "+viewer)
+	secondReq.Header.Set("X-Organization-Id", org)
+	secondPage := httptest.NewRecorder()
+	handler.ServeHTTP(secondPage, secondReq)
+	if secondPage.Code != 200 {
+		t.Fatalf("second account page status=%d body=%s", secondPage.Code, secondPage.Body.String())
+	}
 }

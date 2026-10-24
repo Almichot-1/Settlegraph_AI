@@ -7,7 +7,7 @@
 
 ## What runs
 
-Three Go services start under Docker Compose: public API, PostgreSQL-backed worker, and BankSim. Both databases migrate and seed independently. The demo API can create and advance normal, delayed settlement, duplicate webhook, and provider outage scenarios. BankSim uses a balanced journal and signed provider events. SettleGraph stores deduplicated inbox events and observations, runs two-stage reconciliation with source watermarks, persists immutable proofs, exposes dashboard/transaction/case reads, and records versioned human decisions. AI investigations currently use the labeled offline evidence-linked stub.
+Three Go services start under Docker Compose: public API, PostgreSQL-backed worker, and BankSim. Both databases migrate and seed independently. The demo API can create and advance normal, delayed settlement, duplicate webhook, and provider outage scenarios. BankSim uses a balanced journal and signed provider events. SettleGraph stores deduplicated inbox events and observations, runs two-stage reconciliation with source watermarks, persists immutable proofs, exposes dashboard/account/transaction/case reads, and records versioned human decisions. Account views contain known synthetic metadata without unobserved balances. AI investigations currently use the labeled offline evidence-linked stub.
 
 ## Verification executed
 
@@ -30,7 +30,7 @@ The detailed ticket states are in `AGENT_BACKLOG.json`. `TESTED` means its state
 - SG-002 and SG-020 need the Next.js and Flutter clients to render the frozen fixtures and acknowledge the endpoint table; those client projects are not present in this repository.
 - Production identity and distributed rate limits remain cloud hardening work; production API startup fails closed.
 - Source coverage deliberately refuses to claim completeness when a provider event is absent. Local automatic delivery retry and coverage repair passed; cloud queue integration and broader fault testing remain with SG-021.
-- SG-014 account observations are not implemented; `GET /v1/accounts` returns an empty page.
+- SG-014 account metadata is seeded and listed without private balances; no provider account-balance observations are available yet.
 - SG-017 Bedrock adapter is absent; the offline investigator is operational and evidence bounded.
 - Optional import creation/upload/parse routes are absent; `GET /v1/imports` returns an empty page.
 - SG-021 cloud deploy is not configured: no AWS credentials, IAM, TLS, budget alarm or cloud smoke. SG-022 final acceptance and two fresh-seed rehearsals remain.
