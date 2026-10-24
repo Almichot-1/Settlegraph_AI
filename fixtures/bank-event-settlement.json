@@ -1,0 +1,16 @@
+{
+  "event_id": "88888888-8888-4888-8888-888888888888",
+  "provider_id": "BANK_B",
+  "scenario_run_id": "22222222-2222-4222-8222-222222222222",
+  "sequence": 1,
+  "event_type": "SETTLEMENT_POSTED",
+  "occurred_at": "2026-10-24T11:00:00Z",
+  "transfer_reference": "SIM-TRF-1045",
+  "order_reference": "ORD-1045",
+  "payment_reference": "SIM-TRF-1045",
+  "amount": {
+    "minor_units": "250000",
+    "currency": "ETB"
+  },
+  "payload_version": 1
+}

@@ -1,0 +1,484 @@
+{
+  "project": "SettleGraph AI",
+  "version": "2.1",
+  "status": "SPECIFICATION_ONLY",
+  "actual_tests_executed": false,
+  "contract": "contracts/settlegraph-public.openapi.yaml",
+  "tickets": [
+    {
+      "id": "SG-001",
+      "title": "Repository bootstrap",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [],
+      "description": [
+        "Build Go module containing `cmd/api`, `cmd/worker`, `cmd/banksim`; modular packages and `Makefile` targets.",
+        "Add two separate PostgreSQL services and deterministic env examples; omit all credentials from commits."
+      ],
+      "acceptance": [
+        "Clean checkout builds three binaries, `go test ./...`, `go vet ./...`, `docker compose up` starts health."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-002",
+      "title": "Freeze HTTP schemas and samples",
+      "owner": "Backend + both client DRIs",
+      "priority": "M0",
+      "dependencies": [
+        "SG-001"
+      ],
+      "description": [
+        "Commit two OpenAPI YAMLs, JSON schemas, sample fixtures, API changelog.",
+        "Give Next.js and Flutter developers the signed-off endpoint table, headers, roles, `Money` DTO and versioning rules."
+      ],
+      "acceptance": [
+        "`python validation/validate_pack.py` passes; both clients render a fixture; written acknowledgment recorded."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-003",
+      "title": "Data migrations and seed strategy",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-001"
+      ],
+      "description": [
+        "Apply separate `db/001_settlegraph.sql` and `db/001_banksim.sql`; implement migrations-up command and deterministic scenario seed."
+      ],
+      "acceptance": [
+        "Fresh empty databases migrate; rerunning migrations is safe; seed yields reproducible logical initial state."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-004",
+      "title": "API middleware, identity, tenancy",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-002",
+        "SG-003"
+      ],
+      "description": [
+        "Implement demo JWT/access code, org memberships, role matrix, structured errors, request IDs, strict JSON, deadlines."
+      ],
+      "acceptance": [
+        "401 invalid token, 403 insufficient role, 404 foreign tenant resources, 400 malformed JSON; no leaked secrets."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-005",
+      "title": "BankSim balanced journal and balances",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-003"
+      ],
+      "description": [
+        "Implement accounts, opening equity, journals, postings, DB lock discipline; ETB as signed int64 minor units."
+      ],
+      "acceptance": [
+        "Every journal sum=0; insufficient funds leave balances unchanged; 100 concurrent attempts cannot overspend."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-006",
+      "title": "BankSim transfer/settlement lifecycle",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-005"
+      ],
+      "description": [
+        "Implement `CREATED \u2192 ACCEPTED \u2192 SETTLEMENT_PENDING \u2192 SETTLED` and terminal `FAILED` with invalid-transition rejection."
+      ],
+      "acceptance": [
+        "A synthetic 2,500 ETB payment and later settlement have correct postings; same idempotency key produces one financial effect."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-007",
+      "title": "Scenario controller",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-006"
+      ],
+      "description": [
+        "Implement deterministic seed/virtual clock; `normal_flow`, `delayed_settlement` first; other faults after vertical slice."
+      ],
+      "acceptance": [
+        "Advance with stale `expected_step` is 412; scenario repeat yields same logical events independent of generated IDs."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-008",
+      "title": "Signed BankSim provider events",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-006"
+      ],
+      "description": [
+        "BankSim outbox events with stable event ID, delivery-attempt metadata, per-provider HMAC, provider cursor API."
+      ],
+      "acceptance": [
+        "Valid signature accepted; tampered/expired signature rejected; replay preserves stable event ID."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-009",
+      "title": "SettleGraph durable inbox",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-004",
+        "SG-008"
+      ],
+      "description": [
+        "Authenticate webhooks, persist deduplicated raw/normalized observations, enqueue via transactional outbox."
+      ],
+      "acceptance": [
+        "10 deliveries of identical event create exactly one logical observation; crash/restart safely replays."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-010",
+      "title": "Worker, retries, source coverage",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-009"
+      ],
+      "description": [
+        "Implement worker job leases, retries, DLQ/local equivalent, cursors and provider `complete_through` watermarks."
+      ],
+      "acceptance": [
+        "Outage creates `INCOMPLETE_SOURCE`, not false missing funds; backfill restores coverage and no double-counting."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-011",
+      "title": "Matching stage A (order \u2192 payment)",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-009"
+      ],
+      "description": [
+        "Exact verified ref, amount and currency with uniqueness and deterministic snapshot."
+      ],
+      "acceptance": [
+        "Missing/ambiguous ref creates no automatic match; same amount across unrelated orders never auto-matches."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-012",
+      "title": "Matching stage B (payment \u2192 settlement)",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-010",
+        "SG-011"
+      ],
+      "description": [
+        "Separate evidence proof edge, grace time and adequate source watermark before an unobserved-settlement case."
+      ],
+      "acceptance": [
+        "Accepted is never rendered as settled; 1 minor-unit discrepancy is detected; settlement-first ordering converges."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-013",
+      "title": "Immutable run persistence + proofs",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-011",
+        "SG-012"
+      ],
+      "description": [
+        "Persist run snapshots, match witness/checks, evidence references, unresolved fingerprints and timeline events transactionally."
+      ],
+      "acceptance": [
+        "Re-run doesn't rewrite history; run deduplication and unique allocations enforced under concurrency."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-014",
+      "title": "Dashboard + transaction read APIs",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-004",
+        "SG-013"
+      ],
+      "description": [
+        "Implement summary with `as_of`, source coverage, accepted vs settled distinction; list/get payments and settlements."
+      ],
+      "acceptance": [
+        "JSON matches OpenAPI examples, pagination bound to tenant/filter, web shows real source freshness."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-015",
+      "title": "Case APIs and timeline",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-013"
+      ],
+      "description": [
+        "List/get cases, evidence and immutable case events; one stable case per recurring discrepancy fingerprint."
+      ],
+      "acceptance": [
+        "Web and Flutter read same case; foreign tenant returns 404; late settlement becomes `EVIDENCE_UPDATED`."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-016",
+      "title": "Human review / concurrency",
+      "owner": "Backend + Flutter DRI",
+      "priority": "M0",
+      "dependencies": [
+        "SG-015"
+      ],
+      "description": [
+        "Versioned case decisions and `Idempotency-Key`; `If-Match` optimistic locking; immutable audit."
+      ],
+      "acceptance": [
+        "Matching version resolves with reason, stale version 412, same retry creates one decision; Flutter/web agree."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-017",
+      "title": "Bounded AI investigator",
+      "owner": "Backend",
+      "priority": "M0",
+      "dependencies": [
+        "SG-015"
+      ],
+      "description": [
+        "Build compact evidence bundle from permitted case IDs; Bedrock adapter with deterministic labeled offline fallback; validate schema and identifiers."
+      ],
+      "acceptance": [
+        "Fabricated evidence ID rejected; AI cannot set payment/settlement statuses, close case, or invoke transfer API."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-018",
+      "title": "Demo orchestration APIs",
+      "owner": "Backend + Web DRI",
+      "priority": "M0",
+      "dependencies": [
+        "SG-007",
+        "SG-015"
+      ],
+      "description": [
+        "Implement role-gated public `/v1/demo/*` delegation (no BankSim admin secret in browser)."
+      ],
+      "acceptance": [
+        "Authorized owner can create/advance scenarios; viewer cannot; request and response exactly match OpenAPI."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-019",
+      "title": "All four fault scenarios",
+      "owner": "Backend",
+      "priority": "M1",
+      "dependencies": [
+        "SG-010",
+        "SG-013",
+        "SG-018"
+      ],
+      "description": [
+        "Duplicate notifications, reordered data, settlement delay, provider outage and recovery; restore deterministic test state."
+      ],
+      "acceptance": [
+        "Four replay fixtures green, including old-run preservation and later settlement reconciliation."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-020",
+      "title": "Cross-client smoke",
+      "owner": "All active team members",
+      "priority": "M0",
+      "dependencies": [
+        "SG-014",
+        "SG-015",
+        "SG-016",
+        "SG-018"
+      ],
+      "description": [
+        "Web controls scenario; dashboard shows observed payment; Flutter sees same case and resolves it."
+      ],
+      "acceptance": [
+        "One video/log trace with shared case ID, user ID, timestamps, response codes and no synthetic-vs-real ambiguity."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-021",
+      "title": "AWS deploy and safety controls",
+      "owner": "Project lead",
+      "priority": "M1",
+      "dependencies": [
+        "SG-020"
+      ],
+      "description": [
+        "Enable cloud integration only after local tests; configure runtime secrets, scoped IAM, TLS, budget alarm, queues if supported."
+      ],
+      "acceptance": [
+        "Reproducible deployment, full smoke under cloud settings and tested local/offline fallback."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    },
+    {
+      "id": "SG-022",
+      "title": "Demo hardening / final acceptance",
+      "owner": "Project lead",
+      "priority": "M0",
+      "dependencies": [
+        "SG-019",
+        "SG-020",
+        "SG-021"
+      ],
+      "description": [
+        "Freeze; clean scenario state; run all named tests; rehearse scripted demo; capture rollback/recovery commands."
+      ],
+      "acceptance": [
+        "Two back-to-back fresh-seed demonstrations complete; known limitations written; build tagged; no unverified claims."
+      ],
+      "status": "NOT_STARTED",
+      "evidence": {
+        "commit": null,
+        "tests": [],
+        "runtime_verified": false
+      }
+    }
+  ]
+}

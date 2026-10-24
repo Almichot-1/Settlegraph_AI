@@ -1,0 +1,737 @@
+openapi: 3.0.3
+info:
+  title: BankSim — Independent Internal Simulator API
+  version: 2.0.0-draft
+  description: Synthetic funds only. Provider read token, demo admin token and evaluator token are separate.
+    SettleGraph MUST NOT access evaluator truth or simulator DB.
+servers:
+- url: http://localhost:8082
+security:
+- ProviderToken: []
+tags:
+- name: Simulator
+- name: Provider
+- name: ScenarioAdmin
+- name: Evaluator
+paths:
+  /health/live:
+    get:
+      tags:
+      - Simulator
+      operationId: getBankSimHealth
+      summary: Simulator liveness
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      security: []
+  /provider/v1/institutions:
+    get:
+      tags:
+      - Provider
+      operationId: listSimInstitutions
+      summary: List institutions
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimInstitutionList'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+  /provider/v1/institutions/{institutionId}/events:
+    get:
+      tags:
+      - Provider
+      operationId: listBankEvents
+      summary: Read source events for durable backfill
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventPage'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/InstitutionId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+  /provider/v1/transfers:
+    post:
+      tags:
+      - Provider
+      operationId: createSimTransfer
+      summary: Create synthetic payment (admin demo only)
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimTransfer'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SimTransferRequest'
+      security:
+      - AdminToken: []
+  /provider/v1/transfers/{id}:
+    get:
+      tags:
+      - Provider
+      operationId: getSimTransfer
+      summary: Get one synthetic transfer
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SimTransfer'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/Id'
+  /admin/v1/scenarios:
+    get:
+      tags:
+      - ScenarioAdmin
+      operationId: listBankScenarios
+      summary: List deterministic scenarios
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioList'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      security:
+      - AdminToken: []
+  /admin/v1/scenarios/{scenarioKey}/runs:
+    post:
+      tags:
+      - ScenarioAdmin
+      operationId: createBankScenario
+      summary: Start a new scenario
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioRun'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/ScenarioKey'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartBankScenarioRequest'
+      security:
+      - AdminToken: []
+  /admin/v1/runs/{runId}:
+    get:
+      tags:
+      - ScenarioAdmin
+      operationId: getBankScenario
+      summary: Scenario state
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioRun'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/RunId'
+      security:
+      - AdminToken: []
+  /admin/v1/runs/{runId}/advance:
+    post:
+      tags:
+      - ScenarioAdmin
+      operationId: advanceBankScenario
+      summary: Advance exactly one scenario step
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioRun'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/RunId'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvanceScenarioRequest'
+      security:
+      - AdminToken: []
+  /evaluator/v1/runs/{runId}/truth:
+    get:
+      tags:
+      - Evaluator
+      operationId: getSimulationTruth
+      summary: Test-only simulator ground truth
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluationTruth'
+        '400':
+          $ref: '#/components/responses/ApiError'
+        '401':
+          $ref: '#/components/responses/ApiError'
+        '403':
+          $ref: '#/components/responses/ApiError'
+        '404':
+          $ref: '#/components/responses/ApiError'
+        '409':
+          $ref: '#/components/responses/ApiError'
+        '412':
+          $ref: '#/components/responses/ApiError'
+      parameters:
+      - $ref: '#/components/parameters/RunId'
+      security:
+      - EvaluatorToken: []
+      description: Evaluator-only credentials; MUST be denied to SettleGraph product processes.
+components:
+  securitySchemes:
+    ProviderToken:
+      type: http
+      scheme: bearer
+    AdminToken:
+      type: http
+      scheme: bearer
+    EvaluatorToken:
+      type: http
+      scheme: bearer
+  schemas:
+    Money:
+      type: object
+      required:
+      - minor_units
+      - currency
+      properties:
+        minor_units:
+          type: string
+          pattern: ^-?[0-9]+$
+        currency:
+          type: string
+          enum:
+          - ETB
+      additionalProperties: false
+    SimInstitution:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - BANK
+          - WALLET
+      additionalProperties: false
+    SimInstitutionList:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimInstitution'
+      additionalProperties: false
+    SimAccount:
+      type: object
+      required:
+      - id
+      - institution_id
+      - label
+      - currency
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+        label:
+          type: string
+        currency:
+          type: string
+          enum:
+          - ETB
+      additionalProperties: false
+    SimTransferRequest:
+      type: object
+      required:
+      - from_account_id
+      - to_account_id
+      - amount
+      - order_reference
+      properties:
+        from_account_id:
+          type: string
+          format: uuid
+        to_account_id:
+          type: string
+          format: uuid
+        amount:
+          $ref: '#/components/schemas/Money'
+        order_reference:
+          type: string
+      additionalProperties: false
+    SimTransfer:
+      type: object
+      required:
+      - id
+      - from_account_id
+      - to_account_id
+      - amount
+      - state
+      - reference
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        from_account_id:
+          type: string
+          format: uuid
+        to_account_id:
+          type: string
+          format: uuid
+        amount:
+          $ref: '#/components/schemas/Money'
+        state:
+          type: string
+          enum:
+          - CREATED
+          - ACCEPTED
+          - SETTLEMENT_PENDING
+          - SETTLED
+          - FAILED
+        reference:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    ProviderEvent:
+      type: object
+      required:
+      - event_id
+      - provider_id
+      - sequence
+      - type
+      - transfer_reference
+      - occurred_at
+      - amount
+      - scenario_run_id
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+        sequence:
+          type: integer
+          minimum: 1
+        type:
+          type: string
+          enum:
+          - PAYMENT_ACCEPTED
+          - SETTLEMENT_POSTED
+          - REFUND_POSTED
+          - TRANSFER_FAILED
+        transfer_reference:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+        amount:
+          $ref: '#/components/schemas/Money'
+        scenario_run_id:
+          type: string
+          format: uuid
+        order_reference:
+          type: string
+          nullable: true
+        payment_reference:
+          type: string
+          nullable: true
+      additionalProperties: false
+    EventPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      - source_status
+      - complete_through
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderEvent'
+        next_cursor:
+          type: string
+          nullable: true
+        source_status:
+          type: string
+          enum:
+          - HEALTHY
+          - OUTAGE
+          - STALE
+        complete_through:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    ScenarioRun:
+      type: object
+      required:
+      - id
+      - scenario_key
+      - status
+      - step
+      - total_steps
+      - virtual_now
+      - organization_id
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenario_key:
+          type: string
+          enum:
+          - normal_flow
+          - delayed_settlement
+          - duplicate_webhook
+          - provider_outage
+        status:
+          type: string
+          enum:
+          - PREPARING
+          - READY
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        step:
+          type: integer
+          minimum: 0
+        total_steps:
+          type: integer
+          minimum: 1
+        virtual_now:
+          type: string
+          format: date-time
+        organization_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    StartBankScenarioRequest:
+      type: object
+      required:
+      - seed
+      - organization_id
+      properties:
+        seed:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+        organization_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+    AdvanceScenarioRequest:
+      type: object
+      required:
+      - expected_step
+      properties:
+        expected_step:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    ScenarioList:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioDefinition'
+      additionalProperties: false
+    ScenarioDefinition:
+      type: object
+      required:
+      - key
+      - title
+      - description
+      - steps
+      properties:
+        key:
+          type: string
+          enum:
+          - normal_flow
+          - delayed_settlement
+          - duplicate_webhook
+          - provider_outage
+        title:
+          type: string
+        description:
+          type: string
+        steps:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+    EvaluationTruth:
+      type: object
+      required:
+      - scenario_run_id
+      - seed
+      - expected_payments
+      - expected_settlements
+      - source_ledger_balanced
+      properties:
+        scenario_run_id:
+          type: string
+          format: uuid
+        seed:
+          type: integer
+        expected_payments:
+          type: integer
+        expected_settlements:
+          type: integer
+        source_ledger_balanced:
+          type: boolean
+      additionalProperties: false
+    ApiError:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - request_id
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+          additionalProperties: false
+      additionalProperties: false
+    HealthStatus:
+      type: object
+      required:
+      - status
+      - service
+      properties:
+        status:
+          type: string
+          enum:
+          - UP
+          - NOT_READY
+        service:
+          type: string
+      additionalProperties: false
+  parameters:
+    InstitutionId:
+      name: institutionId
+      in: path
+      required: true
+      schema:
+        type: string
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ScenarioKey:
+      name: scenarioKey
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+        - normal_flow
+        - delayed_settlement
+        - duplicate_webhook
+        - provider_outage
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Idem:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+      description: Scoped to organization, actor, route, and request hash; mismatch => 409.
+  responses:
+    ApiError:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

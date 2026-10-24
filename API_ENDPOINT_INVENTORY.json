@@ -1,0 +1,275 @@
+[
+  {
+    "method": "GET",
+    "path": "/health/live",
+    "operationId": "getLiveness",
+    "tag": "Health",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/health/ready",
+    "operationId": "getReadiness",
+    "tag": "Health",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo/sessions",
+    "operationId": "createDemoSession",
+    "tag": "Identity",
+    "success": "201"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/me",
+    "operationId": "getMe",
+    "tag": "Identity",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/providers",
+    "operationId": "listProviders",
+    "tag": "Providers",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/accounts",
+    "operationId": "listAccounts",
+    "tag": "Providers",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/dashboard/summary",
+    "operationId": "getDashboardSummary",
+    "tag": "Dashboard",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/dashboard/series",
+    "operationId": "getDashboardSeries",
+    "tag": "Dashboard",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders",
+    "operationId": "listOrders",
+    "tag": "Orders",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/orders/{id}",
+    "operationId": "getOrder",
+    "tag": "Orders",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/transactions",
+    "operationId": "listTransactions",
+    "tag": "Transactions",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/transactions/{id}",
+    "operationId": "getTransaction",
+    "tag": "Transactions",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/settlements",
+    "operationId": "listSettlements",
+    "tag": "Settlements",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/settlements/{id}",
+    "operationId": "getSettlement",
+    "tag": "Settlements",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reconciliation/runs",
+    "operationId": "listReconciliationRuns",
+    "tag": "Reconciliation",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/reconciliation/runs",
+    "operationId": "createReconciliationRun",
+    "tag": "Reconciliation",
+    "success": "202"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reconciliation/runs/{runId}",
+    "operationId": "getReconciliationRun",
+    "tag": "Reconciliation",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reconciliation/runs/{runId}/matches",
+    "operationId": "listRunMatches",
+    "tag": "Reconciliation",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/reconciliation/proofs/{id}",
+    "operationId": "getMatchProof",
+    "tag": "Reconciliation",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cases",
+    "operationId": "listCases",
+    "tag": "Cases",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cases/{caseId}",
+    "operationId": "getCase",
+    "tag": "Cases",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/evidence",
+    "operationId": "listCaseEvidence",
+    "tag": "Cases",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/events",
+    "operationId": "listCaseEvents",
+    "tag": "Cases",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/cases/{caseId}/assign",
+    "operationId": "assignCase",
+    "tag": "Cases",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/cases/{caseId}/decisions",
+    "operationId": "recordCaseDecision",
+    "tag": "Cases",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/cases/{caseId}/investigations",
+    "operationId": "createInvestigation",
+    "tag": "Investigations",
+    "success": "202"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/investigations",
+    "operationId": "listInvestigations",
+    "tag": "Investigations",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/investigations/{investigationId}",
+    "operationId": "getInvestigation",
+    "tag": "Investigations",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/jobs/{id}",
+    "operationId": "getJob",
+    "tag": "Investigations",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/audit-events",
+    "operationId": "listAuditEvents",
+    "tag": "Audit",
+    "success": "200"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/demo/scenarios",
+    "operationId": "listDemoScenarios",
+    "tag": "Demo",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo/scenarios/{scenarioKey}/runs",
+    "operationId": "createScenarioRun",
+    "tag": "Demo",
+    "success": "201"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/demo/scenario-runs/{scenarioRunId}",
+    "operationId": "getScenarioRun",
+    "tag": "Demo",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/demo/scenario-runs/{scenarioRunId}/advance",
+    "operationId": "advanceScenarioRun",
+    "tag": "Demo",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/integrations/banksim/events",
+    "operationId": "acceptBankSimEvent",
+    "tag": "Ingestion",
+    "success": "202"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports",
+    "operationId": "listImports",
+    "tag": "Imports",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports",
+    "operationId": "createImport",
+    "tag": "Imports",
+    "success": "201"
+  },
+  {
+    "method": "GET",
+    "path": "/v1/imports/{id}",
+    "operationId": "getImport",
+    "tag": "Imports",
+    "success": "200"
+  },
+  {
+    "method": "POST",
+    "path": "/v1/imports/{id}/complete",
+    "operationId": "completeImport",
+    "tag": "Imports",
+    "success": "202"
+  }
+]

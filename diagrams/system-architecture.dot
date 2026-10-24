@@ -1,0 +1,27 @@
+digraph G {
+ graph [rankdir=TB, bgcolor="transparent", pad="0.15", nodesep="0.35", ranksep="0.45", fontname="DejaVu Sans"];
+ node [shape=box, style="rounded,filled", color="#cbd5e1", fillcolor="#f8fafc", fontname="DejaVu Sans", fontsize=11, penwidth=1.2, margin="0.18,0.13"];
+ edge [color="#64748b", fontname="DejaVu Sans", fontsize=9, arrowsize=0.65];
+ web [label="Next.js Web\nDashboard + Demo Controls", fillcolor="#dbeafe"];
+ mobile [label="Flutter Mobile\nCase Review", fillcolor="#dbeafe"];
+ api [label="SettleGraph Go API\nJWT · Tenant Isolation · OpenAPI", fillcolor="#d1fae5"];
+ worker [label="SettleGraph Go Worker\nMatching · AI · Retries", fillcolor="#d1fae5"];
+ productdb [label="Product PostgreSQL\nImmutable Observations + Audit", shape=cylinder, fillcolor="#e2e8f0"];
+ q [label="Durable Jobs / Optional SQS", fillcolor="#fef3c7"];
+ bedrock [label="Amazon Bedrock\nRead-only Investigation", fillcolor="#f3e8ff"];
+ banksim [label="Independent BankSim Go API\n2 Fictional Banks + Clearing", fillcolor="#ffedd5"];
+ bankdb [label="BankSim PostgreSQL\nBalanced Synthetic Ledger",shape=cylinder, fillcolor="#ffedd5"];
+ {rank=same;web;mobile}
+ {rank=same;api;banksim}
+ {rank=same;productdb;q;bankdb}
+ web -> api [label="REST / JWT"];
+ mobile -> api [label="REST / JWT"];
+ api -> productdb [label="queries / TX"];
+ api -> q [label="outbox"];
+ q -> worker [label="at-least-once"];
+ worker -> productdb [label="verified records"];
+ worker -> bedrock [label="bounded evidence"];
+ banksim -> bankdb [label="private SQL"];
+ banksim -> api [label="signed webhooks", color="#b45309",constraint=false];
+ worker -> banksim [label="provider read / backfill",style=dashed,constraint=false];
+}

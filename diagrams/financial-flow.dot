@@ -1,0 +1,15 @@
+digraph G {
+ graph [rankdir=LR, bgcolor="transparent", pad="0.10", nodesep="0.35",ranksep="0.35",fontname="DejaVu Sans"];
+ node [shape=box, style="rounded,filled", color="#94a3b8", fillcolor="#f8fafc", fontname="DejaVu Sans",fontsize=10,margin="0.18,0.13"];
+ edge [color="#64748b", arrowsize=0.65,fontname="DejaVu Sans",fontsize=9];
+ o [label="Merchant order\n2,500 ETB",fillcolor="#dbeafe"];
+ p [label="Accepted payment\n2,500 ETB",fillcolor="#d1fae5"];
+ s [label="Bank settlement\n2,500 ETB",fillcolor="#d1fae5"];
+ x [label="Discrepancy case\nSource completeness checked",fillcolor="#ffedd5"];
+ ai [label="Bedrock hypothesis\nEvidence IDs validated",fillcolor="#f3e8ff"];
+ h [label="Human decision\nVersioned audit",fillcolor="#e2e8f0"];
+ o -> p [label="Stage A exact match"];
+ p -> s [label="Stage B exact match"];
+ p -> x [label="no unique settlement",style=dashed];
+ x -> ai -> h;
+}

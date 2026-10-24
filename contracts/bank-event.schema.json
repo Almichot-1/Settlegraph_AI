@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Simulated institution provider event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "provider_id",
+    "scenario_run_id",
+    "sequence",
+    "event_type",
+    "occurred_at",
+    "transfer_reference",
+    "amount",
+    "payload_version"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "provider_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scenario_run_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "event_type": {
+      "enum": [
+        "PAYMENT_ACCEPTED",
+        "SETTLEMENT_POSTED",
+        "REFUND_POSTED",
+        "TRANSFER_FAILED"
+      ]
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "transfer_reference": {
+      "type": "string",
+      "minLength": 1
+    },
+    "order_reference": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "payment_reference": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "amount": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minor_units",
+        "currency"
+      ],
+      "properties": {
+        "minor_units": {
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "currency": {
+          "const": "ETB"
+        }
+      }
+    },
+    "payload_version": {
+      "const": 1
+    }
+  }
+}

@@ -1,0 +1,28 @@
+# Local controller state
+.autonomous-codex/
+__pycache__/
+*.pyc
+# Secrets and runtime state
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+*.tfstate
+*.tfstate.*
+*.sqlite
+*.sqlite3
+*.db
+# Local binaries and build outputs
+bin/
+dist/
+coverage.out
+coverage.html
+*.test
+
+# Isolated Python tooling
+.venv/

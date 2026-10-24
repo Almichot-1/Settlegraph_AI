@@ -1,0 +1,12 @@
+digraph G {
+ graph [rankdir=LR,bgcolor="transparent",pad="0.08",fontname="DejaVu Sans"];
+ node [shape=box,style="rounded,filled",fillcolor="#f8fafc",color="#94a3b8",fontname="DejaVu Sans",fontsize=11,margin="0.18,0.12"];
+ edge [color="#475569",fontsize=9,fontname="DejaVu Sans"];
+ o [label="OPEN",fillcolor="#ffedd5"];
+ e [label="EVIDENCE_UPDATED",fillcolor="#dbeafe"];
+ r [label="RESOLVED",fillcolor="#d1fae5"];
+ o -> e [label="new provider evidence"];
+ o -> r [label="human resolve"];
+ e -> r [label="human resolve"];
+ r -> o [label="explicit reopen"];
+}

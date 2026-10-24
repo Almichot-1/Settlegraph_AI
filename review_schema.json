@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "verdict": { "type": "string", "enum": ["PASS", "FAIL", "BLOCKED"] },
+    "findings": { "type": "array", "items": { "type": "string" } },
+    "tests_observed": { "type": "array", "items": { "type": "string" } },
+    "required_fixes": { "type": "array", "items": { "type": "string" } }
+  },
+  "required": ["verdict", "findings", "tests_observed", "required_fixes"],
+  "additionalProperties": false
+}

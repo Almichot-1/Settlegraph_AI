@@ -1,0 +1,2674 @@
+openapi: 3.0.3
+info:
+  title: SettleGraph AI — Web + Mobile Public API
+  version: 2.0.0-draft
+  description: Normative proposed client contract, not yet implemented. All financial amounts are decimal-string
+    minor units. Simulated provider data is not authenticated real-world bank balance information.
+servers:
+- url: http://localhost:8080
+  description: Local development; HTTPS in deployment
+security:
+- BearerAuth: []
+tags:
+- name: Health
+- name: Identity
+- name: Providers
+- name: Dashboard
+- name: Orders
+- name: Transactions
+- name: Settlements
+- name: Reconciliation
+- name: Cases
+- name: Investigations
+- name: Audit
+- name: Demo
+- name: Ingestion
+- name: Imports
+paths:
+  /health/live:
+    get:
+      tags:
+      - Health
+      operationId: getLiveness
+      summary: Process liveness
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /health/ready:
+    get:
+      tags:
+      - Health
+      operationId: getReadiness
+      summary: Required dependency readiness
+      security: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/demo/sessions:
+    post:
+      tags:
+      - Identity
+      operationId: createDemoSession
+      summary: Mint demo-only session token
+      description: Only enabled when APP_MODE=demo. Never expose demo minting in production.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoSessionRequest'
+      security:
+      - DemoCode: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DemoSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/me:
+    get:
+      tags:
+      - Identity
+      operationId: getMe
+      summary: Current user and organization memberships
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/providers:
+    get:
+      tags:
+      - Providers
+      operationId: listProviders
+      summary: Provider sync and availability status
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/accounts:
+    get:
+      tags:
+      - Providers
+      operationId: listAccounts
+      summary: Known business account views
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/dashboard/summary:
+    get:
+      tags:
+      - Dashboard
+      operationId: getDashboardSummary
+      summary: Payment and settlement summary from observations
+      description: Different stages are reported separately; never sum orders, payments and settlements as
+        one monetary total.
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/dashboard/series:
+    get:
+      tags:
+      - Dashboard
+      operationId: getDashboardSeries
+      summary: Time bucket series
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - name: granularity
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - HOUR
+          - DAY
+      - name: from
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: true
+        schema:
+          type: string
+          format: date-time
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSeries'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/orders:
+    get:
+      tags:
+      - Orders
+      operationId: listOrders
+      summary: List known merchant orders
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/orders/{id}:
+    get:
+      tags:
+      - Orders
+      operationId: getOrder
+      summary: Get merchant order
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/transactions:
+    get:
+      tags:
+      - Transactions
+      operationId: listTransactions
+      summary: List normalized accepted/failed/refunded payment observations
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: provider_id
+        in: query
+        schema:
+          type: string
+      - name: scenario_run_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/transactions/{id}:
+    get:
+      tags:
+      - Transactions
+      operationId: getTransaction
+      summary: Get single payment observation
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/settlements:
+    get:
+      tags:
+      - Settlements
+      operationId: listSettlements
+      summary: List observed settlement records
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettlementPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/settlements/{id}:
+    get:
+      tags:
+      - Settlements
+      operationId: getSettlement
+      summary: Get settlement observation
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settlement'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/reconciliation/runs:
+    get:
+      tags:
+      - Reconciliation
+      operationId: listReconciliationRuns
+      summary: List reconciliation attempts
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RunPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+    post:
+      tags:
+      - Reconciliation
+      operationId: createReconciliationRun
+      summary: Queue a new deterministic reconciliation run
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRunRequest'
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/reconciliation/runs/{runId}:
+    get:
+      tags:
+      - Reconciliation
+      operationId: getReconciliationRun
+      summary: Get reconciliation status and counts
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/RunId'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReconciliationRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/reconciliation/runs/{runId}/matches:
+    get:
+      tags:
+      - Reconciliation
+      operationId: listRunMatches
+      summary: Get evidence-backed matched edges
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/RunId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/reconciliation/proofs/{id}:
+    get:
+      tags:
+      - Reconciliation
+      operationId: getMatchProof
+      summary: Get checkable match proof
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchProof'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/cases:
+    get:
+      tags:
+      - Cases
+      operationId: listCases
+      summary: List cases (including mobile assigned queue)
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - OPEN
+          - EVIDENCE_UPDATED
+          - RESOLVED
+      - name: assigned_to
+        in: query
+        schema:
+          type: string
+          format: uuid
+      - name: scenario_run_id
+        in: query
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CasePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/cases/{caseId}:
+    get:
+      tags:
+      - Cases
+      operationId: getCase
+      summary: Get case summary with version
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/cases/{caseId}/evidence:
+    get:
+      tags:
+      - Cases
+      operationId: listCaseEvidence
+      summary: Evidence available at latest case version
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvidencePage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/cases/{caseId}/events:
+    get:
+      tags:
+      - Cases
+      operationId: listCaseEvents
+      summary: Immutable case timeline
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaseEventPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/cases/{caseId}/assign:
+    post:
+      tags:
+      - Cases
+      operationId: assignCase
+      summary: Assign reviewer (role OWNER or ANALYST)
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/Idem'
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignCaseRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+      x-implementation-priority: P1
+      x-client: web-flutter
+  /v1/cases/{caseId}/decisions:
+    post:
+      tags:
+      - Cases
+      operationId: recordCaseDecision
+      summary: Record reviewer decision; financial truth unchanged
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/Idem'
+      - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewDecisionRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Case'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '428':
+          $ref: '#/components/responses/PreconditionRequired'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/cases/{caseId}/investigations:
+    post:
+      tags:
+      - Investigations
+      operationId: createInvestigation
+      summary: Queue read-only AI analysis for current evidence snapshot
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvestigationRequest'
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Investigation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-implementation-priority: P0
+      x-client: web-flutter
+    get:
+      tags:
+      - Investigations
+      operationId: listInvestigations
+      summary: View AI investigation history
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvestigationPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-flutter
+  /v1/cases/{caseId}/investigations/{investigationId}:
+    get:
+      tags:
+      - Investigations
+      operationId: getInvestigation
+      summary: Retrieve evidence-gated AI result
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/CaseId'
+      - $ref: '#/components/parameters/InvestigationId'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Investigation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-flutter
+  /v1/jobs/{id}:
+    get:
+      tags:
+      - Investigations
+      operationId: getJob
+      summary: Get async job status
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-flutter
+  /v1/audit-events:
+    get:
+      tags:
+      - Audit
+      operationId: listAuditEvents
+      summary: Read immutable audit trail
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P1
+      x-client: web-primary
+  /v1/demo/scenarios:
+    get:
+      tags:
+      - Demo
+      operationId: listDemoScenarios
+      summary: List permitted simulator demonstrations
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/demo/scenarios/{scenarioKey}/runs:
+    post:
+      tags:
+      - Demo
+      operationId: createScenarioRun
+      summary: Create fresh isolated seeded simulation run
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/ScenarioKey'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartScenarioRequest'
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/demo/scenario-runs/{scenarioRunId}:
+    get:
+      tags:
+      - Demo
+      operationId: getScenarioRun
+      summary: Get scenario progress and virtual clock
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/ScenarioRunId'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/demo/scenario-runs/{scenarioRunId}/advance:
+    post:
+      tags:
+      - Demo
+      operationId: advanceScenarioRun
+      summary: Advance a scenario by one deterministic step
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/ScenarioRunId'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvanceScenarioRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScenarioRun'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '412':
+          $ref: '#/components/responses/PreconditionFailed'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      x-implementation-priority: P0
+      x-client: web-primary
+  /v1/integrations/banksim/events:
+    post:
+      tags:
+      - Ingestion
+      operationId: acceptBankSimEvent
+      summary: Ingest signed BankSim webhook
+      description: 'Requires X-BankSim-Event-Id, X-BankSim-Delivery-Timestamp (epoch seconds), and X-BankSim-Signature:
+        v1=<lowercase hex HMAC SHA256>. Signature input timestamp + "." + event_id + "." + exact raw body.
+        Delivery freshness ±300 seconds.'
+      security:
+      - WebhookSignature: []
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAccepted'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+      parameters:
+      - name: X-BankSim-Event-Id
+        in: header
+        required: true
+        schema:
+          type: string
+          format: uuid
+      - name: X-BankSim-Delivery-Timestamp
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9]+$
+      - name: X-BankSim-Signature
+        in: header
+        required: true
+        schema:
+          type: string
+          pattern: ^v1=[a-f0-9]{64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BankEvent'
+      x-implementation-priority: P0
+      x-client: service-only
+  /v1/imports:
+    get:
+      tags:
+      - Imports
+      operationId: listImports
+      summary: '[Fallback] List uploaded evidence'
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P2
+      x-client: web-primary
+    post:
+      tags:
+      - Imports
+      operationId: createImport
+      summary: '[Fallback] Create S3 presigned import'
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateImportRequest'
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportUploadSession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P2
+      x-client: web-primary
+  /v1/imports/{id}:
+    get:
+      tags:
+      - Imports
+      operationId: getImport
+      summary: '[Fallback] Get ingestion progress'
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Import'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P2
+      x-client: web-primary
+  /v1/imports/{id}/complete:
+    post:
+      tags:
+      - Imports
+      operationId: completeImport
+      summary: '[Fallback] Verify uploaded blob and queue parser'
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Id'
+      - $ref: '#/components/parameters/Idem'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteImportRequest'
+      responses:
+        '202':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Import'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      x-implementation-priority: P2
+      x-client: web-primary
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    DemoCode:
+      type: apiKey
+      in: header
+      name: X-Demo-Access-Code
+    WebhookSignature:
+      type: apiKey
+      in: header
+      name: X-BankSim-Signature
+  schemas:
+    Money:
+      type: object
+      required:
+      - minor_units
+      - currency
+      properties:
+        minor_units:
+          type: string
+          pattern: ^-?[0-9]+$
+        currency:
+          type: string
+          enum:
+          - ETB
+      additionalProperties: false
+    ApiError:
+      type: object
+      required:
+      - error
+      properties:
+        error:
+          type: object
+          required:
+          - code
+          - message
+          - request_id
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+          additionalProperties: false
+      additionalProperties: false
+    Role:
+      type: string
+      enum:
+      - OWNER
+      - ANALYST
+      - REVIEWER
+      - VIEWER
+    Organization:
+      type: object
+      required:
+      - id
+      - name
+      - mode
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        mode:
+          type: string
+          enum:
+          - DEMO
+          - PRODUCTION
+      additionalProperties: false
+    Membership:
+      type: object
+      required:
+      - organization
+      - role
+      properties:
+        organization:
+          $ref: '#/components/schemas/Organization'
+        role:
+          $ref: '#/components/schemas/Role'
+      additionalProperties: false
+    UserProfile:
+      type: object
+      required:
+      - id
+      - display_name
+      - memberships
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        memberships:
+          type: array
+          items:
+            $ref: '#/components/schemas/Membership'
+      additionalProperties: false
+    DemoSessionRequest:
+      type: object
+      required:
+      - display_name
+      properties:
+        display_name:
+          type: string
+          minLength: 1
+          maxLength: 80
+      additionalProperties: false
+    DemoSessionResponse:
+      type: object
+      required:
+      - access_token
+      - token_type
+      - expires_at
+      - user
+      - default_organization_id
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum:
+          - Bearer
+        expires_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/UserProfile'
+        default_organization_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+    HealthStatus:
+      type: object
+      required:
+      - status
+      - service
+      properties:
+        status:
+          type: string
+          enum:
+          - UP
+          - NOT_READY
+        service:
+          type: string
+      additionalProperties: false
+    Provider:
+      type: object
+      required:
+      - id
+      - name
+      - kind
+      - sync_status
+      - last_observed_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum:
+          - BANK
+          - WALLET
+          - GATEWAY
+        sync_status:
+          type: string
+          enum:
+          - HEALTHY
+          - STALE
+          - OUTAGE
+          - NEVER_SYNCED
+        last_observed_at:
+          type: string
+          format: date-time
+          nullable: true
+      additionalProperties: false
+    ProviderList:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    DashboardSummary:
+      type: object
+      required:
+      - as_of
+      - orders_expected
+      - payments_accepted
+      - settlements_observed
+      - unmatched_payments
+      - open_cases
+      - providers
+      - coverage
+      properties:
+        as_of:
+          type: string
+          format: date-time
+        orders_expected:
+          $ref: '#/components/schemas/Money'
+        payments_accepted:
+          $ref: '#/components/schemas/Money'
+        settlements_observed:
+          $ref: '#/components/schemas/Money'
+        unmatched_payments:
+          $ref: '#/components/schemas/Money'
+        open_cases:
+          type: integer
+          minimum: 0
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Provider'
+        coverage:
+          type: object
+          required:
+          - source_status
+          - is_complete
+          properties:
+            source_status:
+              type: string
+              enum:
+              - COMPLETE
+              - INCOMPLETE_SOURCE
+              - STALE
+            is_complete:
+              type: boolean
+          additionalProperties: false
+      additionalProperties: false
+    TimePoint:
+      type: object
+      required:
+      - bucket_start
+      - payments_accepted
+      - settlements_observed
+      properties:
+        bucket_start:
+          type: string
+          format: date-time
+        payments_accepted:
+          $ref: '#/components/schemas/Money'
+        settlements_observed:
+          $ref: '#/components/schemas/Money'
+      additionalProperties: false
+    DashboardSeries:
+      type: object
+      required:
+      - granularity
+      - points
+      properties:
+        granularity:
+          type: string
+          enum:
+          - HOUR
+          - DAY
+        points:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimePoint'
+      additionalProperties: false
+    AccountView:
+      type: object
+      required:
+      - id
+      - provider_id
+      - account_label
+      - account_type
+      - last_observed_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+        account_label:
+          type: string
+        account_type:
+          type: string
+          enum:
+          - MERCHANT
+          - CUSTOMER
+        last_observed_at:
+          type: string
+          format: date-time
+          nullable: true
+        observed_balance:
+          $ref: '#/components/schemas/Money'
+      additionalProperties: false
+    AccountPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountView'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    Order:
+      type: object
+      required:
+      - id
+      - external_reference
+      - amount
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        external_reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+        status:
+          type: string
+          enum:
+          - OPEN
+          - PAYMENT_OBSERVED
+          - RECONCILED
+        created_at:
+          type: string
+          format: date-time
+        scenario_run_id:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    OrderPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    Transaction:
+      type: object
+      required:
+      - id
+      - provider_id
+      - external_reference
+      - amount
+      - state
+      - occurred_at
+      - observed_at
+      - source_attestation
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+        external_reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+        state:
+          type: string
+          enum:
+          - ACCEPTED
+          - FAILED
+          - REFUNDED
+        occurred_at:
+          type: string
+          format: date-time
+        observed_at:
+          type: string
+          format: date-time
+        order_reference:
+          type: string
+          nullable: true
+        source_attestation:
+          type: string
+          enum:
+          - SIGNED_SIMULATED_PROVIDER
+          - IMPORTED_UNVERIFIED
+        scenario_run_id:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    TransactionPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Transaction'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    Settlement:
+      type: object
+      required:
+      - id
+      - provider_id
+      - external_reference
+      - payment_reference
+      - amount
+      - occurred_at
+      - observed_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+        external_reference:
+          type: string
+        payment_reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+        occurred_at:
+          type: string
+          format: date-time
+        observed_at:
+          type: string
+          format: date-time
+        scenario_run_id:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    SettlementPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Settlement'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreateRunRequest:
+      type: object
+      required:
+      - scope
+      properties:
+        scope:
+          type: string
+          enum:
+          - LATEST_OBSERVATIONS
+          - SCENARIO_RUN
+        scenario_run_id:
+          type: string
+          format: uuid
+          nullable: true
+        rules_version:
+          type: string
+          default: v1
+      additionalProperties: false
+    ReconciliationRun:
+      type: object
+      required:
+      - id
+      - status
+      - scope
+      - rules_version
+      - created_at
+      - matched_order_payment
+      - matched_payment_settlement
+      - unmatched_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        scope:
+          type: string
+          enum:
+          - LATEST_OBSERVATIONS
+          - SCENARIO_RUN
+        rules_version:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        matched_order_payment:
+          type: integer
+          minimum: 0
+        matched_payment_settlement:
+          type: integer
+          minimum: 0
+        unmatched_count:
+          type: integer
+          minimum: 0
+        scenario_run_id:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    RunPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReconciliationRun'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    Match:
+      type: object
+      required:
+      - id
+      - run_id
+      - stage
+      - left_evidence_id
+      - right_evidence_id
+      - allocated_amount
+      - rule
+      - proof_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        stage:
+          type: string
+          enum:
+          - ORDER_PAYMENT
+          - PAYMENT_SETTLEMENT
+        left_evidence_id:
+          type: string
+          format: uuid
+        right_evidence_id:
+          type: string
+          format: uuid
+        allocated_amount:
+          $ref: '#/components/schemas/Money'
+        rule:
+          type: string
+          enum:
+          - EXACT_PROVIDER_REFERENCE_AND_AMOUNT
+          - EXACT_ORDER_REFERENCE_AND_AMOUNT
+        proof_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+    MatchPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Match'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    MatchProof:
+      type: object
+      required:
+      - id
+      - run_id
+      - rule_version
+      - stage
+      - checks
+      - source_evidence_ids
+      - result
+      properties:
+        id:
+          type: string
+          format: uuid
+        run_id:
+          type: string
+          format: uuid
+        rule_version:
+          type: string
+        stage:
+          type: string
+          enum:
+          - ORDER_PAYMENT
+          - PAYMENT_SETTLEMENT
+        checks:
+          type: array
+          items:
+            type: string
+        source_evidence_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        result:
+          type: string
+          enum:
+          - MATCHED_IN_IMPORTED_RECORDS
+      additionalProperties: false
+    Evidence:
+      type: object
+      required:
+      - id
+      - record_type
+      - reference
+      - amount
+      - occurred_at
+      - provider_id
+      properties:
+        id:
+          type: string
+          format: uuid
+        record_type:
+          type: string
+          enum:
+          - ORDER
+          - PAYMENT
+          - SETTLEMENT
+          - SOURCE_STATUS
+        reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+          nullable: true
+        occurred_at:
+          type: string
+          format: date-time
+        provider_id:
+          type: string
+          nullable: true
+        raw_payload_sha256:
+          type: string
+          nullable: true
+      additionalProperties: false
+    EvidencePage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Evidence'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    Case:
+      type: object
+      required:
+      - id
+      - kind
+      - status
+      - severity
+      - title
+      - summary
+      - version
+      - created_at
+      - updated_at
+      - evidence_count
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - SETTLEMENT_NOT_OBSERVED
+          - AMOUNT_MISMATCH
+          - AMBIGUOUS_MATCH
+          - SOURCE_UNAVAILABLE
+        status:
+          type: string
+          enum:
+          - OPEN
+          - EVIDENCE_UPDATED
+          - RESOLVED
+        severity:
+          type: string
+          enum:
+          - LOW
+          - MEDIUM
+          - HIGH
+        title:
+          type: string
+        summary:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        evidence_count:
+          type: integer
+          minimum: 0
+        assigned_to:
+          type: string
+          format: uuid
+          nullable: true
+        scenario_run_id:
+          type: string
+          format: uuid
+          nullable: true
+      additionalProperties: false
+    CasePage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Case'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CaseEvent:
+      type: object
+      required:
+      - id
+      - case_id
+      - type
+      - occurred_at
+      - actor
+      - message
+      - version
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum:
+          - OPENED
+          - EVIDENCE_ADDED
+          - INVESTIGATION_REQUESTED
+          - INVESTIGATION_COMPLETED
+          - ASSIGNED
+          - DECISION_RECORDED
+          - RESOLVED
+        occurred_at:
+          type: string
+          format: date-time
+        actor:
+          type: string
+        message:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+    CaseEventPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseEvent'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    AssignCaseRequest:
+      type: object
+      required:
+      - assignee_id
+      properties:
+        assignee_id:
+          type: string
+          format: uuid
+      additionalProperties: false
+    ReviewDecisionRequest:
+      type: object
+      required:
+      - decision
+      - reason
+      properties:
+        decision:
+          type: string
+          enum:
+          - RESOLVE
+          - REOPEN
+          - NEEDS_MORE_EVIDENCE
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 2000
+      additionalProperties: false
+    InvestigationRequest:
+      type: object
+      required:
+      - mode
+      properties:
+        mode:
+          type: string
+          enum:
+          - EVIDENCE_ANALYSIS
+      additionalProperties: false
+    Investigation:
+      type: object
+      required:
+      - id
+      - case_id
+      - status
+      - provider
+      - created_at
+      - evidence_snapshot_hash
+      properties:
+        id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - COMPLETED
+          - REJECTED
+          - FAILED
+        provider:
+          type: string
+          enum:
+          - BEDROCK
+          - OFFLINE_STUB
+        created_at:
+          type: string
+          format: date-time
+        evidence_snapshot_hash:
+          type: string
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        result:
+          $ref: '#/components/schemas/InvestigationResult'
+      additionalProperties: false
+    InvestigationResult:
+      type: object
+      required:
+      - summary
+      - hypotheses
+      - recommended_actions
+      - evidence_ids
+      - limitations
+      properties:
+        summary:
+          type: string
+        hypotheses:
+          type: array
+          items:
+            type: object
+            required:
+            - explanation
+            - evidence_ids
+            properties:
+              explanation:
+                type: string
+              evidence_ids:
+                type: array
+                items:
+                  type: string
+                  format: uuid
+            additionalProperties: false
+        recommended_actions:
+          type: array
+          items:
+            type: string
+        evidence_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+        limitations:
+          type: array
+          items:
+            type: string
+      additionalProperties: false
+    InvestigationPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Investigation'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    Job:
+      type: object
+      required:
+      - id
+      - kind
+      - status
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+          - RECONCILE
+          - INVESTIGATE
+          - IMPORT
+          - BACKFILL
+        status:
+          type: string
+          enum:
+          - QUEUED
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        created_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        error_code:
+          type: string
+          nullable: true
+      additionalProperties: false
+    AuditEvent:
+      type: object
+      required:
+      - id
+      - actor
+      - action
+      - resource_type
+      - resource_id
+      - occurred_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          type: string
+        action:
+          type: string
+        resource_type:
+          type: string
+        resource_id:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AuditEventPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditEvent'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    ScenarioDefinition:
+      type: object
+      required:
+      - key
+      - title
+      - description
+      - steps
+      properties:
+        key:
+          type: string
+          enum:
+          - normal_flow
+          - delayed_settlement
+          - duplicate_webhook
+          - provider_outage
+        title:
+          type: string
+        description:
+          type: string
+        steps:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+    ScenarioList:
+      type: object
+      required:
+      - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScenarioDefinition'
+      additionalProperties: false
+    StartScenarioRequest:
+      type: object
+      required:
+      - seed
+      properties:
+        seed:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+      additionalProperties: false
+    ScenarioRun:
+      type: object
+      required:
+      - id
+      - scenario_key
+      - status
+      - step
+      - total_steps
+      - virtual_now
+      - organization_id
+      - created_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenario_key:
+          type: string
+          enum:
+          - normal_flow
+          - delayed_settlement
+          - duplicate_webhook
+          - provider_outage
+        status:
+          type: string
+          enum:
+          - PREPARING
+          - READY
+          - RUNNING
+          - COMPLETED
+          - FAILED
+        step:
+          type: integer
+          minimum: 0
+        total_steps:
+          type: integer
+          minimum: 1
+        virtual_now:
+          type: string
+          format: date-time
+        organization_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    AdvanceScenarioRequest:
+      type: object
+      required:
+      - expected_step
+      properties:
+        expected_step:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    WebhookAccepted:
+      type: object
+      required:
+      - accepted
+      - duplicate
+      properties:
+        accepted:
+          type: boolean
+        duplicate:
+          type: boolean
+      additionalProperties: false
+    Import:
+      type: object
+      required:
+      - id
+      - status
+      - filename
+      - source_kind
+      - created_at
+      - accepted_records
+      - rejected_records
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+          - AWAITING_UPLOAD
+          - QUEUED
+          - PROCESSING
+          - COMPLETED
+          - FAILED
+        filename:
+          type: string
+        source_kind:
+          type: string
+          enum:
+          - ORDERS
+          - PAYMENTS
+          - SETTLEMENTS
+        created_at:
+          type: string
+          format: date-time
+        accepted_records:
+          type: integer
+          minimum: 0
+        rejected_records:
+          type: integer
+          minimum: 0
+      additionalProperties: false
+    ImportPage:
+      type: object
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Import'
+        next_cursor:
+          type: string
+          nullable: true
+      additionalProperties: false
+    BankEvent:
+      type: object
+      required:
+      - event_id
+      - provider_id
+      - scenario_run_id
+      - sequence
+      - event_type
+      - occurred_at
+      - transfer_reference
+      - amount
+      - payload_version
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        provider_id:
+          type: string
+        scenario_run_id:
+          type: string
+          format: uuid
+        sequence:
+          type: integer
+          minimum: 1
+        event_type:
+          type: string
+          enum:
+          - PAYMENT_ACCEPTED
+          - SETTLEMENT_POSTED
+          - REFUND_POSTED
+          - TRANSFER_FAILED
+        occurred_at:
+          type: string
+          format: date-time
+        transfer_reference:
+          type: string
+        amount:
+          $ref: '#/components/schemas/Money'
+        payload_version:
+          type: integer
+          enum:
+          - 1
+        order_reference:
+          type: string
+          nullable: true
+        payment_reference:
+          type: string
+          nullable: true
+      additionalProperties: false
+    CreateImportRequest:
+      type: object
+      required:
+      - filename
+      - source_kind
+      - content_sha256
+      - file_size_bytes
+      properties:
+        filename:
+          type: string
+          maxLength: 160
+        source_kind:
+          type: string
+          enum:
+          - ORDERS
+          - PAYMENTS
+          - SETTLEMENTS
+        content_sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        file_size_bytes:
+          type: integer
+          minimum: 1
+          maximum: 5242880
+      additionalProperties: false
+    ImportUploadSession:
+      type: object
+      required:
+      - import
+      - upload_url
+      - upload_headers
+      - expires_at
+      properties:
+        import:
+          $ref: '#/components/schemas/Import'
+        upload_url:
+          type: string
+          format: uri
+        upload_headers:
+          type: object
+          additionalProperties:
+            type: string
+        expires_at:
+          type: string
+          format: date-time
+      additionalProperties: false
+    CompleteImportRequest:
+      type: object
+      required:
+      - content_sha256
+      properties:
+        content_sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+      additionalProperties: false
+  parameters:
+    Org:
+      name: X-Organization-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Organization must belong to bearer subject; server verifies membership.
+    Idem:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+      description: Scoped to organization, actor, route, and request hash; mismatch => 409.
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      schema:
+        type: string
+        pattern: ^"[0-9]+"$
+      description: Quoted integer from Case.version; stale => 412; required => 428.
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    RunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ScenarioKey:
+      name: scenarioKey
+      in: path
+      required: true
+      schema:
+        type: string
+        enum:
+        - normal_flow
+        - delayed_settlement
+        - duplicate_webhook
+        - provider_outage
+    ScenarioRunId:
+      name: scenarioRunId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    InvestigationId:
+      name: investigationId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Forbidden:
+      description: Permission denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Conflicting request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    PreconditionFailed:
+      description: Stale version or step
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    PreconditionRequired:
+      description: Missing If-Match
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    RateLimited:
+      description: Rate limited
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ServiceUnavailable:
+      description: Temporarily unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
