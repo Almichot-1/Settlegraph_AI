@@ -34,18 +34,18 @@ jobs:
       - run: flutter test --coverage
       - name: Upload visual test differences
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: flutter-golden-diffs
           path: mobile_app/test/**/failures/*.png
           if-no-files-found: ignore
           retention-days: 7
       - run: flutter build apk --debug
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: settlegraph-android-debug
           path: mobile_app/build/app/outputs/flutter-apk/app-debug.apk
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: mobile-coverage

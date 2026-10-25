@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,23 +16,27 @@ void main() {
     final d = await mountWorkspace(tester);
     await expectLater(
       find.byType(MaterialApp),
-      matchesGoldenFile('goldens/login-light.png'),
+      matchesGoldenFile('goldens/${Platform.operatingSystem}/login-light.png'),
     );
     await enterWorkspace(tester);
     await expectLater(
       find.byType(MaterialApp),
-      matchesGoldenFile('goldens/cases-light.png'),
+      matchesGoldenFile('goldens/${Platform.operatingSystem}/cases-light.png'),
     );
     await openSampleCase(tester);
     await expectLater(
       find.byType(MaterialApp),
-      matchesGoldenFile('goldens/case-detail-light.png'),
+      matchesGoldenFile(
+        'goldens/${Platform.operatingSystem}/case-detail-light.png',
+      ),
     );
     await d.appearance.setMode(ThemeMode.dark);
     await tester.pumpAndSettle();
     await expectLater(
       find.byType(MaterialApp),
-      matchesGoldenFile('goldens/case-detail-dark.png'),
+      matchesGoldenFile(
+        'goldens/${Platform.operatingSystem}/case-detail-dark.png',
+      ),
     );
   });
 }

@@ -86,7 +86,7 @@ flutter build ios --simulator --no-codesign
 flutter test integration_test/app_test.dart -d <device-id>
 ```
 
-Golden baselines use the pinned SDK, bundled fonts, 390×844 logical pixels, and **Africa/Addis_Ababa** time. Update them only after inspecting intended visual changes. The opt-in live test is skipped in the default suite; it requires a running synthetic backend and an access code supplied through the host process environment.
+Golden baselines use the pinned SDK, bundled fonts, 390×844 logical pixels, and **Africa/Addis_Ababa** time. References are separated under `test/app/goldens/macos/` and `test/app/goldens/linux/` because native font rasterization differs between the two hosts. Both use exact pixel comparisons. Update references only on the matching host after inspecting intended visual changes. CI uploads rendered images and visual diffs as `flutter-golden-diffs` when a test fails. The opt-in live test is skipped in the default suite; it requires a running synthetic backend and an access code supplied through the host process environment.
 
 Native live Android verification can be launched from the repository root without compiling credentials into the test app:
 
