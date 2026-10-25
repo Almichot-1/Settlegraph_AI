@@ -1,6 +1,6 @@
 # Frontend + Flutter API handoff
 
-**Contract status:** Version `2.0.0-draft`. Backend not implemented. All mock examples are synthetic. `contracts/settlegraph-public.openapi.yaml` is the **normative schema**.
+**Contract status:** Version `2.0.0-draft`. The local synthetic backend and Flutter client are implemented; see `docs/implementation-progress.md` for actual test evidence and remaining client/cloud gates. All mock examples are synthetic. `contracts/settlegraph-public.openapi.yaml` is the **normative schema**.
 
 ## Runtime conventions
 
@@ -10,7 +10,7 @@
 | Production URL | HTTPS URL provided after deployment, never assume public simulator address |
 | Authentication | Login: `POST /v1/demo/sessions` with server-distributed `X-Demo-Access-Code`, then Bearer JWT |
 | Organization | `X-Organization-Id` required for every tenant route; use membership returned from `GET /v1/me` |
-| User role | `OWNER` controls demo and assignment; `REVIEWER` records decisions; `VIEWER` read only |
+| User role | Preserve `OWNER`, `ANALYST`, `REVIEWER`, `VIEWER`. Owner/analyst can assign and request analysis; mobile decisions are offered to owner/reviewer; viewer is read only. Server authorization remains authoritative. |
 | Amounts | `{"minor_units":"250000","currency":"ETB"}` means 2,500.00 ETB |
 | Case versions | `Case.version` → `If-Match: "3"` header on assign/decision; on 412 refresh case |
 | Duplicate POST protection | `Idempotency-Key` unique per user action and reused on network retries |
@@ -150,3 +150,7 @@ Use secure storage for app access token, do not log it. For Flutter case decisio
 ## Contract change management
 
 **No silent field changes.** Any change affecting `operationId`, URL, role, required header, JSON property, enum, status code, or money format is a contract change. Modify the YAML first, update example JSON and tests, send a concise migration note to both client engineers. If field addition is backward compatible, still announce its meaning.
+
+## Implemented Flutter workspace
+
+See [`mobile_app/README.md`](mobile_app/README.md). Default `APP_ENV=fixture` is a labeled sample workspace; `APP_ENV=demo` connects to the configurable product API with secure native session storage. Case filters and investigation pagination now follow the documented contract. Android native sample and live delayed-settlement review passed on 25 October 2026; iOS build/device verification is blocked by the local Xcode platform/runtime mismatch. Next.js joint smoke remains outstanding.

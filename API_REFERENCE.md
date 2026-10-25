@@ -1,6 +1,6 @@
 # Complete HTTP endpoint inventory and implementation schedule
 
-**Status:** Proposed contract; no endpoints are implemented by this document. The YAML files under `contracts/` are normative for request/response schemas, error payloads, security and parameter details.
+**Status:** Contract inventory for the implemented local synthetic backend. Optional import mutations and production/cloud integrations remain deferred; see `docs/implementation-progress.md` for verified behavior. The YAML files under `contracts/` are normative for request/response schemas, error payloads, security and parameter details.
 
 **Priority key:** P0=first end-to-end demo; P1=rich product; P2=CSV import fallback. Web and Flutter can mock P1/P2 responses until implemented.
 

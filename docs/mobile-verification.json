@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-25",
+  "branch": "feature/settlegraph-mobile",
+  "native_android": {
+    "scenario_run_id": "c27f2e7f-c50f-485c-a4c1-a936d00384c1",
+    "case_id": "8c927e02-674b-4dd2-9e38-aca38dfa0715",
+    "user_id": "22222222-2222-4222-8222-222222222222",
+    "final_status": "RESOLVED",
+    "final_version": 5,
+    "event_count": 5,
+    "client": "Android Flutter emulator",
+    "completed_at": "2026-10-25T08:06:57Z"
+  },
+  "results": {
+    "flutter_analyze": "PASS",
+    "flutter_unit_widget_golden_tests": {
+      "status": "PASS",
+      "passed": 26,
+      "opt_in_live_skipped_in_default_suite": 1
+    },
+    "host_live_flutter_api_test": "PASS",
+    "native_android_tests": {
+      "status": "PASS",
+      "passed": 2
+    },
+    "android_debug_apk": "PASS",
+    "ios_simulator_build": {
+      "status": "BLOCKED",
+      "reason": "Xcode requires iOS 26.5; installed runtime is iOS 26.4"
+    },
+    "go_test_and_vet": "PASS (Go 1.27.0 container)",
+    "isolated_postgres_httpapi_tests": "PASS",
+    "public_runtime_contracts": "PASS",
+    "four_backend_scenarios_and_recovery": "PASS",
+    "pack_validation": "PASS",
+    "github_actions": "NOT_RUN",
+    "nextjs_flutter_joint_smoke": "NOT_RUN",
+    "aws": "NOT_RUN"
+  }
+}
