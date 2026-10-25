@@ -202,18 +202,27 @@ func (a API) listInvestigations(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "NOT_FOUND", "Case not found", reqID(r))
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), "SELECT id,case_id,status,provider,evidence_snapshot_hash,created_at,completed_at,result FROM ai_investigations WHERE organization_id=$1 AND case_id=$2 ORDER BY created_at,id", org, caseID)
+	limit, cursor, ok := a.limitCursor(w, r, org)
+	if !ok {
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), "SELECT id,case_id,status,provider,evidence_snapshot_hash,created_at,completed_at,result FROM ai_investigations WHERE organization_id=$1 AND case_id=$2 AND ($3='' OR id::text>$3) ORDER BY id LIMIT $4", org, caseID, cursor, limit+1)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Investigations unavailable", reqID(r))
 		return
 	}
 	defer rows.Close()
 	items := []map[string]any{}
+	var next any
 	for rows.Next() {
 		item, err := scanInvestigation(rows)
 		if err != nil {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Investigations unavailable", reqID(r))
 			return
+		}
+		if len(items) == limit {
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
+			break
 		}
 		items = append(items, item)
 	}
@@ -221,7 +230,7 @@ func (a API) listInvestigations(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Investigations unavailable", reqID(r))
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": nil})
+	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": next})
 }
 func (a API) oneInvestigation(w http.ResponseWriter, r *http.Request) {
 	org, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER")

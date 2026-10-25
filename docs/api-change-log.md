@@ -25,3 +25,7 @@ Approval and effective version:
 ```
 
 No silent renaming of enum members, money encoding, version headers, error shape or required security headers. YAML must be changed first.
+
+## 2026-10-25 — Mobile integration runtime corrections (nonbreaking)
+
+No OpenAPI or fixture shape changed. `listCases` now applies documented `assigned_to`, `status`, and `scenario_run_id` before keyset pagination; invalid filters return the existing 400 error envelope. `listInvestigations` now honors existing `limit`/`cursor` parameters with ID ordering. No order was promised in the contract; clients sort investigation history by `created_at` and ID for presentation. PostgreSQL-backed filter/pagination and tenant/cursor negative tests passed. Runtime test scripts now accept optional `SETTLEGRAPH_API_URL`, preserving the default localhost:8080.

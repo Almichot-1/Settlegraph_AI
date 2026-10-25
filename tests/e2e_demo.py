@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Local Compose replay of the four synthetic scenarios and the review path."""
 import json
+import os
 import hmac
 import hashlib
 import secrets
@@ -11,7 +12,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API = 'http://127.0.0.1:8080'
+API = os.environ.get('SETTLEGRAPH_API_URL', 'http://127.0.0.1:8080')
 BANK = 'http://127.0.0.1:8082'
 ORG = '11111111-1111-4111-8111-111111111111'
 ENV = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if '=' in line)
