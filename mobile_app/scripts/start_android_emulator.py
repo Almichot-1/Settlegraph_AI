@@ -5,15 +5,22 @@ Cold boot and software graphics avoid broken snapshots/graphics contexts on
 Mac development hosts. This script never wipes emulator data.
 """
 import argparse
+import sys
 import os
 from pathlib import Path
 import subprocess
 import tempfile
 import time
 
+ROOT=Path(__file__).resolve().parents[2]
+sys.path.insert(0,str(ROOT/'scripts'))
+from mobile_env import environment
+_,selected_env=environment()
+os.environ.update(selected_env)
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--avd', default='Pixel_8')
+parser.add_argument('--avd', default='SettleGraph_Review')
 parser.add_argument('--port', type=int, default=5554)
+parser.add_argument('--headless',action='store_true')
 parser.add_argument('--timeout', type=int, default=180)
 args = parser.parse_args()
 if args.port % 2 or not 5554 <= args.port <= 5682:
@@ -23,6 +30,11 @@ adb = sdk / 'platform-tools/adb'
 emulator = sdk / 'emulator/emulator'
 if not adb.is_file() or not emulator.is_file():
     raise SystemExit('Android SDK not found. Set ANDROID_SDK_ROOT to your SDK directory.')
+avd_home=Path(os.environ['ANDROID_AVD_HOME'])
+if not (avd_home/(args.avd+'.ini')).exists():
+    manager=sdk/'cmdline-tools/latest/bin/avdmanager'
+    if not manager.exists():raise SystemExit('Install Android command-line tools before creating the project emulator.')
+    subprocess.run([str(manager),'create','avd','-n',args.avd,'-k',('system-images;android-35;default;x86_64' if (sdk/'system-images/android-35/default/x86_64').exists() else 'system-images;android-35;google_apis;x86_64'),'-d','pixel_5'],input='no\n',text=True,check=True)
 serial = f'emulator-{args.port}'
 log_path = Path(tempfile.gettempdir()) / 'settlegraph-emulator.log'
 
@@ -45,7 +57,8 @@ if not existing:
         child = subprocess.Popen([
             str(emulator), '-avd', args.avd, '-port', str(args.port),
             '-no-snapshot-load', '-gpu', 'swiftshader', '-feature', '-Vulkan',
-            '-no-audio', '-no-boot-anim',
+            '-no-audio', '-no-boot-anim', '-memory','1536','-cores','2',
+            *(['-no-window'] if args.headless else []),
         ], stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True)
     print(f'Opening {args.avd}. Startup log: {log_path}', flush=True)

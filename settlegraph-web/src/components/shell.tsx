@@ -3,10 +3,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Activity, ArrowLeftRight, BrainCircuit, Building2, ClipboardList, FileClock, LayoutDashboard, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
-import type { UserProfile } from '@/generated/types';
+import { SessionContext, activeRole, type WorkspaceSession } from '@/lib/session';
+import { clearAttempts } from '@/lib/mutations';
 import { shorten } from '@/lib/format';
 
-type Session = { user: UserProfile; organization_id: string };
+type Session = WorkspaceSession;
 
 const navigation = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -24,12 +25,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {
+    let active=true;
     fetch('/api/session', { cache: 'no-store' })
       .then(async (r) => {
-        if (r.ok) setSession((await r.json()) as Session);
+        if(!active)return;
+        if (r.ok) {const value=await r.json();if(active)setSession(value as Session);}
         else router.replace('/login');
       })
-      .catch(() => router.replace('/login'));
+      .catch(() => {if(active)router.replace('/login');});
+    return ()=>{active=false;};
   }, [router]);
 
   // Accessible keyboard handler: close drawer on Escape
@@ -44,16 +48,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [open]);
 
+  useEffect(() => {
+    const expire=()=>{clearAttempts();setSession(null);router.replace('/login');};
+    window.addEventListener('settlegraph-session-expired',expire);
+    return ()=>window.removeEventListener('settlegraph-session-expired',expire);
+  },[router]);
+
   async function logout() {
+    clearAttempts();
     await fetch('/api/session', { method: 'DELETE' });
     router.replace('/login');
     router.refresh();
   }
 
-  const currentOrgName = session?.user.memberships[0]?.organization.name ?? 'Sample Merchant';
+  const currentOrgName = session?.user.memberships.find(m=>m.organization.id===session.organization_id)?.organization.name ?? 'Workspace';
+  const role=activeRole(session);
 
   return (
-    <div className="app-shell">
+    <SessionContext.Provider value={session}><div className="app-shell">
       <aside
         id="workspace-sidebar"
         aria-label="Workspace navigation"
@@ -78,7 +90,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
         <div className="nav-label">WORKSPACE</div>
         <nav aria-label="Main navigation">
-          {navigation.map((x) => {
+          {navigation.filter(x=> x.href==='/simulation'?role==='OWNER': ['/reconciliation','/audit'].includes(x.href)?['OWNER','ANALYST'].includes(role??''):true).map((x) => {
             const Icon = x.icon;
             const isActive = path === x.href || path.startsWith(x.href + '/');
             return (
@@ -110,7 +122,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </div>
             <div>
               <strong>{session?.user.display_name ?? 'Demo user'}</strong>
-              <small>{session?.user.memberships[0]?.role ?? 'Loading…'}</small>
+              <small>{role ?? 'Loading…'}</small>
             </div>
             <button title="Sign out" aria-label="Sign out" onClick={logout}>
               <LogOut size={17} />
@@ -159,13 +171,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </header>
 
         <main className="content" id="main-content">
-          {children}
+          {session ? children : <p role="status">Loading workspace…</p>}
         </main>
 
         <footer className="footer">
           SettleGraph AI · Hackathon development environment · Simulated provider records only
         </footer>
       </div>
-    </div>
+    </div></SessionContext.Provider>
   );
 }

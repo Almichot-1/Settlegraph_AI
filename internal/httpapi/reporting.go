@@ -71,6 +71,12 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	tx, err := a.DB.BeginTx(r.Context(), &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard snapshot unavailable", reqID(r))
+		return
+	}
+	defer tx.Rollback()
 	var orders, payments, settlements, unmatched int64
 	var open int
 	queries := []struct {
@@ -84,12 +90,12 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 		{`SELECT count(*) FROM investigation_cases WHERE organization_id=$1 AND status<>'RESOLVED'`, &open},
 	}
 	for _, q := range queries {
-		if a.DB.QueryRowContext(r.Context(), q.sql, org).Scan(q.dest) != nil {
+		if tx.QueryRowContext(r.Context(), q.sql, org).Scan(q.dest) != nil {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard unavailable", reqID(r))
 			return
 		}
 	}
-	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,label,source_type,sync_status,last_observed_at FROM provider_sources WHERE organization_id=$1 ORDER BY id`, org)
+	rows, err := tx.QueryContext(r.Context(), `SELECT id,label,source_type,sync_status,last_observed_at FROM provider_sources WHERE organization_id=$1 ORDER BY id`, org)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard unavailable", reqID(r))
 		return
@@ -116,14 +122,18 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	var complete sql.NullTime
 	var status sql.NullString
 	var virtual sql.NullTime
-	_ = a.DB.QueryRowContext(r.Context(), `SELECT source_status,complete_through FROM source_status_snapshots WHERE organization_id=$1 AND provider_id='BANK_B' ORDER BY observed_at DESC,id DESC LIMIT 1`, org).Scan(&status, &complete)
-	_ = a.DB.QueryRowContext(r.Context(), `SELECT max(virtual_now) FROM scenario_runs WHERE organization_id=$1`, org).Scan(&virtual)
+	_ = tx.QueryRowContext(r.Context(), `SELECT source_status,complete_through FROM source_status_snapshots WHERE organization_id=$1 AND provider_id='BANK_B' ORDER BY observed_at DESC,id DESC LIMIT 1`, org).Scan(&status, &complete)
+	_ = tx.QueryRowContext(r.Context(), `SELECT max(virtual_now) FROM scenario_runs WHERE organization_id=$1`, org).Scan(&virtual)
 	isComplete := status.Valid && status.String == "HEALTHY" && complete.Valid && (!virtual.Valid || !complete.Time.Before(virtual.Time))
 	coverage := "INCOMPLETE_SOURCE"
 	if isComplete {
 		coverage = "COMPLETE"
 	} else if status.Valid && status.String == "STALE" {
 		coverage = "STALE"
+	}
+	if err = tx.Commit(); err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard snapshot unavailable", reqID(r))
+		return
 	}
 	writeJSON(w, 200, map[string]any{"as_of": a.now().Format(time.RFC3339), "orders_expected": money(orders), "payments_accepted": money(payments), "settlements_observed": money(settlements), "unmatched_payments": money(unmatched), "open_cases": open, "providers": providers, "coverage": map[string]any{"source_status": coverage, "is_complete": isComplete}})
 }

@@ -36,4 +36,9 @@ SELECT NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='005') AS apply
 \i /migrations/005_settlegraph.sql
 \endif
 INSERT INTO schema_migrations(version) VALUES ('005') ON CONFLICT DO NOTHING;
+SELECT NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version='006') AS apply_sixth \gset
+\if :apply_sixth
+\i /migrations/006_settlegraph.sql
+\endif
+INSERT INTO schema_migrations(version) VALUES ('006') ON CONFLICT DO NOTHING;
 COMMIT;

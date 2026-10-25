@@ -40,3 +40,18 @@ These are source-review findings, not newly executed failure tests. Proposed rep
 | R-24 Cross-stack automated coverage absent | MEDIUM | All components | CI covers mobile; BFF security-named test covers client error mapping only. Add actual route/browser and coordinated native integration checks | OPEN |
 | R-25 Decision roles disagree | HIGH for permissions | Backend + Clients | Go allows ANALYST decisions; Flutter/handoff use OWNER/REVIEWER. Enforce the documented common policy and negative tests | OPEN |
 | R-26 Local mobile SDK incompatible | HIGH for local native acceptance | Mobile / workstation | Linux host Flutter 3.27.4/Dart 3.6.2 is below the mobile SDK requirement; use an isolated pinned toolchain and verify Android runtime | OPEN |
+
+## Integration implementation checkpoint — 25 October 2026
+
+This entry supersedes the planning assessments above for the tested local scope. User approval is recorded in the integration plan.
+
+| Risk | Observed mitigation | Current state |
+|---|---|---|
+| R-14 / R-20 | Distinct seeded role identities and actual member directory; PostgreSQL role/assignment tests and live browser assignment pass | MITIGATED_LOCAL; native handoff pending |
+| R-21 | Provider/scenario filters before pagination and scoped multi-page cursors; 110-row integration history checks pass | MITIGATED_LOCAL |
+| R-22 | Version-bracketed web case reads and immutable session-storage retry; actual lost successful reply + reload + one decision pass | MITIGATED_LOCAL |
+| R-23 | Durable analysis jobs, immutable snapshot/provenance, bounded retries and separate reconciliation loop; real-DB failure/replay/lease tests pass | MITIGATED_LOCAL; actual Bedrock account invocation remains R-02 |
+| R-25 | OWNER/REVIEWER decision policy enforced; ANALYST/VIEWER negative tests pass | MITIGATED_LOCAL |
+| R-17 / R-18 / R-24 / R-26 | Secure bounded mobile retry storage, coordinated browser/native tests, isolated SDK setup and full CI are implemented; native/CI execution pending | IN_PROGRESS |
+
+AWS/real-bank credentials and deployment remain absent by design for this local task. Linux does not establish native iOS acceptance. SG-002 written client-owner acknowledgement remains a human acceptance item; automated contract tests do not impersonate a DRI.

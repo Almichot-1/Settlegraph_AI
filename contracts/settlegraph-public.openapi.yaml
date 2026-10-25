@@ -83,6 +83,8 @@ paths:
                 $ref: '#/components/schemas/DemoSessionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
         '404':
@@ -473,6 +475,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P1
       x-client: web-primary
     post:
@@ -767,6 +771,8 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
         '412':
           $ref: '#/components/responses/PreconditionFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P1
       x-client: web-flutter
   /v1/cases/{caseId}/decisions:
@@ -807,6 +813,8 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
         '412':
           $ref: '#/components/responses/PreconditionFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-flutter
   /v1/cases/{caseId}/investigations:
@@ -844,6 +852,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-flutter
     get:
@@ -1019,6 +1029,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-primary
   /v1/demo/scenario-runs/{scenarioRunId}:
@@ -1086,6 +1098,8 @@ paths:
           $ref: '#/components/responses/PreconditionFailed'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-primary
   /v1/integrations/banksim/events:
@@ -1166,6 +1180,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P2
       x-client: web-primary
     post:
@@ -1262,6 +1278,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P2
       x-client: web-primary
 components:
@@ -2713,6 +2731,12 @@ components:
             $ref: '#/components/schemas/ApiError'
     RateLimited:
       description: Rate limited
+      headers:
+        Retry-After:
+          description: Minimum seconds before retrying
+          schema:
+            type: integer
+            minimum: 1
       content:
         application/json:
           schema:

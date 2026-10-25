@@ -1,15 +1,24 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, FileCheck, Layers, Play, RefreshCw, ShieldCheck, X } from 'lucide-react';
+import { useWorkspaceSession, workspaceScope } from '@/lib/session';
+import { activeScenario } from '@/lib/scenario';
+import { runMutation } from '@/lib/mutations';
+import { allPages } from '@/lib/client';
 import { api } from '@/lib/api';
-import type { Match, MatchProof, ReconciliationRun } from '@/generated/types';
-import { formatMoney, makeKey, shortDate, shorten } from '@/lib/format';
+import type { Match, MatchProof, ReconciliationRun, CreateRunRequest } from '@/generated/types';
+import { formatMoney, shortDate, shorten } from '@/lib/format';
 import { Badge, Empty, Failure, Loading, Notice, Panel, SectionHeading } from '@/components/ui';
 
 const MAX_POLL_ATTEMPTS = 15;
 const POLL_INTERVAL_MS = 2000;
 
 export default function Reconciliation() {
+  const scope=workspaceScope(useWorkspaceSession());
+  const [scenario,setScenario]=useState<string|null>(null);
+  const [runScope,setRunScope]=useState<CreateRunRequest['scope']>('LATEST_OBSERVATIONS');
+  useEffect(()=>{const id=activeScenario(scope);setScenario(id);if(id)setRunScope('SCENARIO_RUN');},[scope]);
+  const [nextCursor,setNextCursor]=useState<string|null>(null);
   const [runs, setRuns] = useState<ReconciliationRun[]>([]);
   const [busy, setBusy] = useState(true);
   const [launching, setLaunching] = useState(false);
@@ -27,11 +36,12 @@ export default function Reconciliation() {
   const [selectedProof, setSelectedProof] = useState<MatchProof | null>(null);
   const [loadingProof, setLoadingProof] = useState(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (cursor?:string) => {
     setBusy(true);
     try {
-      const p = await api.listReconciliationRuns({ limit: 50 });
-      setRuns(p.items);
+      const p = await api.listReconciliationRuns({ limit: 50,cursor });
+      setRuns(old=>(cursor?[...old,...p.items]:p.items).sort((a,b)=>b.created_at.localeCompare(a.created_at)));
+      setNextCursor(p.next_cursor);
       setError(null);
     } catch (e) {
       setError(e);
@@ -105,8 +115,8 @@ export default function Reconciliation() {
     setLaunching(true);
     setMessage('');
     try {
-      const runKey = makeKey();
-      const r = await api.createReconciliationRun({ scope: 'LATEST_OBSERVATIONS' }, runKey);
+      const body:CreateRunRequest=runScope==='SCENARIO_RUN'?{scope:runScope,scenario_run_id:scenario}:{scope:runScope};
+      const r=await runMutation(scope+':reconciliation:create',body,undefined,m=>api.createReconciliationRun(m.body as CreateRunRequest,m.key));
       await load();
 
       if (r.status === 'COMPLETED') {
@@ -129,8 +139,7 @@ export default function Reconciliation() {
     setSelectedProof(null);
     setLoadingMatches(true);
     try {
-      const result = await api.listRunMatches(run.id, { limit: 100 });
-      setMatches(result.items);
+      setMatches(await allPages(cursor=>api.listRunMatches(run.id,{limit:100,cursor})));
     } catch {
       setMatches([]);
     } finally {
@@ -160,7 +169,7 @@ export default function Reconciliation() {
         title="Reconciliation runs"
         description="Compare observed orders, payments, and settlements using verifiable matching rules."
         action={
-          <button className="button button-ghost" onClick={load} disabled={busy || Boolean(pollingRunId)}>
+          <button className="button button-ghost" onClick={()=>void load()} disabled={busy || Boolean(pollingRunId)}>
             <RefreshCw size={16} className={busy || pollingRunId ? 'spin' : ''} />
             Refresh
           </button>
@@ -169,6 +178,11 @@ export default function Reconciliation() {
       <Notice>These are transaction matching runs, not bank settlement instructions. No money is moved by this application.</Notice>
 
       <Panel title="New run" subtitle="Process the latest imported or simulated observations">
+        <label htmlFor="run-scope">Evidence scope</label>
+        <select id="run-scope" value={runScope} onChange={e=>setRunScope(e.target.value as CreateRunRequest['scope'])}>
+          {scenario&&<option value="SCENARIO_RUN">Selected scenario {scenario.slice(0,8)}</option>}
+          <option value="LATEST_OBSERVATIONS">Unscoped imported observations</option>
+        </select>
         <div className="flex-between">
           <div className="help-text">A real run may remain queued or running while backend workers process events.</div>
           <button className="button button-primary" onClick={create} disabled={launching || Boolean(pollingRunId)}>
@@ -179,9 +193,10 @@ export default function Reconciliation() {
         {message && <div className="inline-message" role="status">{message}</div>}
       </Panel>
 
+      {nextCursor&&<button className="button button-ghost" disabled={busy} onClick={()=>void load(nextCursor)}>Load more runs</button>}
       <Panel title="Run history" subtitle="Click any run to inspect verifiable matches and deterministic proofs">
         <div className="table-scroll">
-          {error ? <Failure error={error} onRetry={load} /> : null}
+          {error ? <Failure error={error} onRetry={()=>void load()} /> : null}
           {busy && !runs.length ? (
             <Loading />
           ) : runs.length ? (

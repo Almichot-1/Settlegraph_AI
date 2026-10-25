@@ -76,6 +76,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const payload: unknown = await response.json().catch(() => null);
 
+  if (response.status === 401 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('settlegraph-session-expired'));
+  }
   if (!response.ok) {
     const e = payload as ApiErrorShape | null;
     const code = e?.error?.code || normalizeErrorCode(response.status);
@@ -96,4 +99,16 @@ export function qs(input: Record<string, string | number | boolean | null | unde
   }
   const search = params.toString();
   return search ? `?${search}` : '';
+}
+
+/** Read full evidence/history with bounded continuation and loop detection. */
+export async function allPages<T>(fetchPage: (cursor?: string) => Promise<{items:T[];next_cursor?:string|null}>): Promise<T[]> {
+  const result:T[]=[]; const seen=new Set<string>(); let cursor:string|undefined;
+  for (let page=0;page<1000;page++) {
+    const response=await fetchPage(cursor); result.push(...response.items);
+    if (!response.next_cursor) return result;
+    if (seen.has(response.next_cursor)) throw new Error('The server repeated a page cursor.');
+    seen.add(response.next_cursor);cursor=response.next_cursor;
+  }
+  throw new Error('History exceeds the supported page count. Narrow the selection.');
 }

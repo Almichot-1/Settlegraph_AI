@@ -4,22 +4,26 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ArrowLeft, BrainCircuit, RefreshCw, Send, ShieldCheck, UserCheck } from 'lucide-react';
 import { api } from '@/lib/api';
-import { ApiRequestError } from '@/lib/client';
-import type { Case, Evidence, CaseEvent, Investigation, ReviewDecisionRequest } from '@/generated/types';
-import { formatMoney, makeKey, shortDate } from '@/lib/format';
+import { useWorkspaceSession, activeRole, workspaceScope } from '@/lib/session';
+import { runMutation, pendingAttempt } from '@/lib/mutations';
+import { allPages, ApiRequestError } from '@/lib/client';
+import type { Case, Evidence, CaseEvent, Investigation, ReviewDecisionRequest, Member } from '@/generated/types';
+import { formatMoney, shortDate } from '@/lib/format';
 import { Badge, Empty, Failure, Loading, Notice, Panel } from '@/components/ui';
 
 const MAX_POLL_ATTEMPTS = 15;
 const POLL_INTERVAL_MS = 2000;
 
-const TEAM_MEMBERS = [
-  { id: '33333333-3333-4333-8333-333333333333', name: 'Demo Owner', role: 'OWNER' },
-  { id: '44444444-4444-4444-8444-444444444444', name: 'Abebe Kebede', role: 'REVIEWER' },
-  { id: '55555555-5555-4555-8555-555555555555', name: 'Sara Haile', role: 'ANALYST' },
-  { id: '66666666-6666-4666-8666-666666666666', name: 'Dawit Tadesse', role: 'REVIEWER' },
-];
-
 export default function CaseDetail() {
+  const session=useWorkspaceSession();
+  const role=activeRole(session);
+  const canAssign=['OWNER','ANALYST'].includes(role??'');
+  const canReview=['OWNER','REVIEWER'].includes(role??'');
+  const scope=workspaceScope(session)+':case:';
+  const [members,setMembers]=useState<Member[]>([]);
+  const [ackRequired,setAckRequired]=useState(false);
+  const [uncertain,setUncertain]=useState(false);
+  const loadGeneration=useRef(0);
   const { caseId } = useParams<{ caseId: string }>();
   const [record, setRecord] = useState<Case | null>(null);
   const [evidence, setEvidence] = useState<Evidence[]>([]);
@@ -33,36 +37,52 @@ export default function CaseDetail() {
   const [decision, setDecision] = useState<ReviewDecisionRequest['decision']>('NEEDS_MORE_EVIDENCE');
   const [selectedAssignee, setSelectedAssignee] = useState<string>('');
   // Stable idempotency key for decision mutations across retries
-  const [decisionKey, setDecisionKey] = useState<string>(() => makeKey());
+
   const [pollingAiId, setPollingAiId] = useState<string | null>(null);
   const aiPollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const aiPollCountRef = useRef(0);
 
   const load = useCallback(async () => {
+    const generation=++loadGeneration.current;
     setBusy(true);
     try {
-      const [c, e, ev, ai] = await Promise.all([
-        api.getCase(caseId),
-        api.listCaseEvidence(caseId),
-        api.listCaseEvents(caseId),
-        api.listInvestigations(caseId),
-      ]);
+      let c:Case|undefined;
+      let e:Evidence[]=[];let ev:CaseEvent[]=[];let ai:Investigation[]=[];
+      for(let attempt=0;attempt<3;attempt++) {
+        const before=await api.getCase(caseId);
+        [e,ev,ai]=await Promise.all([
+          allPages(cursor=>api.listCaseEvidence(caseId,{limit:100,cursor})),
+          allPages(cursor=>api.listCaseEvents(caseId,{limit:100,cursor})),
+          allPages(cursor=>api.listInvestigations(caseId,{limit:100,cursor})),
+        ]);
+        const after=await api.getCase(caseId);
+        if(before.version===after.version){c=after;break;}
+      }
+      if(!c)throw new Error('Evidence is changing. Refresh before reviewing.');
+      if(generation!==loadGeneration.current)return;
+      const directory=canAssign?await allPages(cursor=>api.listMembers({limit:100,cursor})):[];
+      if(generation!==loadGeneration.current)return;
+      setMembers(directory.filter(m=>m.role!=='VIEWER'));
       setRecord(c);
-      setSelectedAssignee((prev) => prev || c.assigned_to || TEAM_MEMBERS[0].id);
-      setEvidence(e.items);
-      setEvents(ev.items);
-      setInvestigations(ai.items);
+      setSelectedAssignee(c.assigned_to??'');
+      setEvidence(e);setEvents(ev);
+      setInvestigations(ai.sort((a,b)=>b.created_at.localeCompare(a.created_at)||b.id.localeCompare(a.id)));
+      const pending=pendingAttempt(scope+caseId+':decision');
+      setUncertain(Boolean(pending));
+      if(pending){const body=pending.body as ReviewDecisionRequest;setReason(body.reason);setDecision(body.decision);}
       setError(null);
     } catch (e) {
-      setError(e);
+      if(generation===loadGeneration.current)setError(e);
     } finally {
-      setBusy(false);
+      if(generation===loadGeneration.current)setBusy(false);
     }
-  }, [caseId]);
+  }, [caseId,canAssign,scope]);
 
   useEffect(() => {
+    setRecord(null);setAckRequired(false);setPollingAiId(null);
     void load();
     return () => {
+      loadGeneration.current++;
       if (aiPollTimerRef.current) clearTimeout(aiPollTimerRef.current);
     };
   }, [load]);
@@ -73,15 +93,19 @@ export default function CaseDetail() {
       if (aiPollTimerRef.current) clearTimeout(aiPollTimerRef.current);
       aiPollCountRef.current = 0;
       setPollingAiId(invId);
+      const generation=loadGeneration.current;
 
       const check = async () => {
+        if(generation!==loadGeneration.current)return;
         aiPollCountRef.current += 1;
         try {
           const inv = await api.getInvestigation(caseId, invId);
-          const aiList = await api.listInvestigations(caseId);
-          setInvestigations(aiList.items);
+          const aiList = await allPages(cursor=>api.listInvestigations(caseId,{limit:100,cursor}));
+          if(generation!==loadGeneration.current)return;
+          setInvestigations(aiList.sort((a,b)=>b.created_at.localeCompare(a.created_at)));
 
           if (inv.status === 'COMPLETED') {
+            await load();
             setMessage('AI investigation completed with evidence citations.');
             setPollingAiId(null);
             return;
@@ -99,6 +123,7 @@ export default function CaseDetail() {
             setPollingAiId(null);
           }
         } catch (err) {
+          if(generation!==loadGeneration.current)return;
           setMessage(err instanceof Error ? err.message : 'Error polling investigation');
           setPollingAiId(null);
         }
@@ -106,15 +131,14 @@ export default function CaseDetail() {
 
       aiPollTimerRef.current = setTimeout(check, POLL_INTERVAL_MS);
     },
-    [caseId]
+    [caseId,load]
   );
 
   async function investigate() {
     setActionBusy(true);
     setMessage('');
     try {
-      const aiKey = makeKey();
-      const ai = await api.createInvestigation(caseId, { mode: 'EVIDENCE_ANALYSIS' }, aiKey);
+      const ai = await runMutation(scope+caseId+':investigate',{mode:'EVIDENCE_ANALYSIS'},undefined,m=>api.createInvestigation(caseId,m.body as {mode:'EVIDENCE_ANALYSIS'},m.key));
       await load();
 
       if (ai.status === 'COMPLETED') {
@@ -135,10 +159,9 @@ export default function CaseDetail() {
     setActionBusy(true);
     setMessage('');
     try {
-      const assignKey = makeKey();
-      const updated = await api.assignCase(caseId, { assignee_id: selectedAssignee }, record.version, assignKey);
+      const updated = await runMutation(scope+caseId+':assign',{assignee_id:selectedAssignee},record.version,m=>api.assignCase(caseId,m.body as {assignee_id:string},m.version!,m.key));
       setRecord(updated);
-      const memberName = TEAM_MEMBERS.find((m) => m.id === selectedAssignee)?.name ?? selectedAssignee;
+      const memberName = members.find((m) => m.id === selectedAssignee)?.display_name ?? selectedAssignee;
       setMessage(`Case successfully reassigned to ${memberName}. Version updated to v${updated.version}.`);
       await load();
     } catch (e) {
@@ -165,16 +188,12 @@ export default function CaseDetail() {
     setMessage('');
     try {
       // Submitting review decision requiring explicit reason (>= 5 chars), If-Match: "<Case.version>", and stable Idempotency-Key
-      const c = await api.recordCaseDecision(
-        caseId,
-        { decision, reason: cleanReason },
-        record.version,
-        decisionKey
-      );
+      const c=await runMutation(scope+caseId+':decision',{decision,reason:cleanReason},record.version,
+        m=>api.recordCaseDecision(caseId,m.body as ReviewDecisionRequest,m.version!,m.key));
       setRecord(c);
       setMessage(`Decision "${decision}" recorded successfully with audit history.`);
       // Rotate stable idempotency key after successful mutation
-      setDecisionKey(makeKey());
+      setUncertain(false);
       await load();
     } catch (e) {
       if (e instanceof ApiRequestError && e.status === 412) {
@@ -182,9 +201,10 @@ export default function CaseDetail() {
         setMessage(
           'Case version conflict (HTTP 412): Someone updated this case. Latest version reloaded—please re-evaluate and re-submit your decision.'
         );
-        setDecisionKey(makeKey());
+        setAckRequired(true);setUncertain(false);
         await load();
       } else {
+        setUncertain(Boolean(pendingAttempt(scope+caseId+':decision')));
         setMessage(e instanceof Error ? e.message : 'Could not record decision');
       }
     } finally {
@@ -230,6 +250,7 @@ export default function CaseDetail() {
         Cases summarize the evidence available in the workspace. An AI explanation is a hypothesis, not a bank confirmation. Only human reviewers have decision authority; AI cannot close or resolve cases.
       </Notice>
 
+      {error&&<Failure error={error} onRetry={load}/>}
       <div className="case-detail-grid">
         <div className="vertical-stack">
           {/* Supporting evidence panel */}
@@ -285,7 +306,7 @@ export default function CaseDetail() {
             <button
               className="button button-primary button-full"
               onClick={investigate}
-              disabled={actionBusy || Boolean(pollingAiId)}
+              disabled={!canAssign || actionBusy || busy || Boolean(error) || Boolean(pollingAiId)}
             >
               <BrainCircuit size={17} />
               {actionBusy ? 'Working…' : pollingAiId ? 'Polling analysis…' : 'Investigate evidence'}
@@ -358,7 +379,7 @@ export default function CaseDetail() {
           {/* Case assignment panel */}
           <Panel
             title="Case assignment"
-            subtitle={`Current owner: ${TEAM_MEMBERS.find((m) => m.id === (record.assigned_to ?? selectedAssignee))?.name ?? (record.assigned_to ?? 'Unassigned')}`}
+            subtitle={`Current owner: ${members.find((m) => m.id === record.assigned_to)?.display_name ?? (record.assigned_to ?? 'Unassigned')}`}
             action={<UserCheck size={18} className="subtle-icon" />}
           >
             <label className="field-label" htmlFor="assignee-select">
@@ -368,11 +389,13 @@ export default function CaseDetail() {
               id="assignee-select"
               className="full-field"
               value={selectedAssignee}
+              disabled={!canAssign || Boolean(pendingAttempt(scope+caseId+':assign'))}
               onChange={(e) => setSelectedAssignee(e.target.value)}
             >
-              {TEAM_MEMBERS.map((m) => (
+              <option value="">Choose a member</option>
+              {members.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.name} ({m.role})
+                  {m.display_name} ({m.role})
                 </option>
               ))}
             </select>
@@ -381,7 +404,7 @@ export default function CaseDetail() {
               onClick={assign}
               className="button button-ghost button-full"
               style={{ marginTop: '10px' }}
-              disabled={actionBusy || selectedAssignee === record.assigned_to}
+              disabled={!canAssign || actionBusy || busy || Boolean(error) || !selectedAssignee || selectedAssignee === record.assigned_to}
             >
               <UserCheck size={16} />
               {selectedAssignee === record.assigned_to ? 'Currently Assigned' : 'Reassign Case'}
@@ -396,6 +419,8 @@ export default function CaseDetail() {
             title="Record a decision"
             subtitle={`Optimistic concurrency · version ${record.version}`}
           >
+            {ackRequired&&<Notice tone="warn">The case changed. Review the refreshed evidence before continuing.<button className="button button-ghost" onClick={()=>setAckRequired(false)}>I reviewed the updated evidence</button></Notice>}
+            {!canReview&&<p className="help-text">Your role can read this case. An owner or reviewer records decisions.</p>}
             <label className="field-label" htmlFor="decision">
               Decision
             </label>
@@ -403,6 +428,7 @@ export default function CaseDetail() {
               id="decision"
               className="full-field"
               value={decision}
+              disabled={!canReview || uncertain || ackRequired}
               onChange={(e) => setDecision(e.target.value as ReviewDecisionRequest['decision'])}
             >
               <option value="NEEDS_MORE_EVIDENCE">Needs more evidence</option>
@@ -418,6 +444,8 @@ export default function CaseDetail() {
               className="full-field"
               rows={4}
               value={reason}
+              maxLength={2000}
+              disabled={!canReview || uncertain || ackRequired}
               onChange={(e) => setReason(e.target.value)}
               placeholder="State verified findings and reason for decision…"
             />
@@ -425,10 +453,10 @@ export default function CaseDetail() {
             <button
               onClick={review}
               className="button button-primary button-full"
-              disabled={actionBusy || reason.trim().length < 5}
+              disabled={!canReview || actionBusy || busy || Boolean(error) || ackRequired || reason.trim().length < 5 || reason.trim().length>2000}
             >
               <Send size={16} />
-              Submit decision
+              {uncertain?'Retry unconfirmed decision':'Submit decision'}
             </button>
             <p className="help-text">
               <ShieldCheck size={14} /> Every decision requires explicit reason, passes If-Match: &quot;{record.version}&quot; and stable Idempotency-Key.

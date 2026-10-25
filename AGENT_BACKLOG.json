@@ -49,11 +49,12 @@
       "evidence": {
         "commit": null,
         "tests": [
-          "2026-10-25: Mobile canonical fixtures deserialize and render in Flutter tests; four inspected light/dark screen baselines. Next.js acknowledgment remains outstanding."
+          "2026-10-25: Mobile canonical fixtures deserialize and render in Flutter tests; four inspected light/dark screen baselines. Next.js acknowledgment remains outstanding.",
+          "2026-10-25: generated contract SHA, real Next.js browser rendering and Flutter canonical fixtures/goldens PASS; human acknowledgement is not inferred from automation."
         ],
         "runtime_verified": false
       },
-      "blocker": "Flutter fixture rendering is verified locally; Next.js rendering and client-owner contract acknowledgment remain outstanding."
+      "blocker": "Automated contract checks and both client rendering are verified; written acknowledgement from the human client owners remains outstanding."
     },
     {
       "id": "SG-003",
@@ -73,7 +74,8 @@
       "evidence": {
         "commit": null,
         "tests": [
-          "fresh database migrations through 005 twice; seed twice; balanced opening journal"
+          "fresh database migrations through 005 twice; seed twice; balanced opening journal",
+          "2026-10-25 integration checkpoint: make test-integration PASS: migrations through 006 and seeds applied twice to a fresh database for each integration test."
         ],
         "runtime_verified": true
       }
@@ -98,7 +100,8 @@
         "commit": null,
         "tests": [
           "TestDemoIdentityRoleAndTenantBoundary on isolated PostgreSQL: 401 missing/invalid token, 403 viewer mutation, 404 foreign tenant, 400 malformed JSON",
-          "internal/config tests: production auth fails closed"
+          "internal/config tests: production auth fails closed",
+          "2026-10-25 integration checkpoint: Distinct server-owned demo identities, common OWNER/REVIEWER policy, tenant/cursor negatives and bounded request-rate tests PASS."
         ],
         "runtime_verified": true
       }
@@ -331,14 +334,15 @@
       "acceptance": [
         "JSON matches OpenAPI examples, pagination bound to tenant/filter, web shows real source freshness."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
         "tests": [
           "tests/contract_runtime.py: dashboard, account, order, payment and settlement responses match OpenAPI",
           "TestDemoIdentityRoleAndTenantBoundary: account pagination, nullable unobserved balances and scoped cursor",
           "tests/e2e_demo.py: accepted/settled distinction and source freshness",
-          "TestDemoIdentityRoleAndTenantBoundary: latest-observations POST queues without a demo scenario"
+          "TestDemoIdentityRoleAndTenantBoundary: latest-observations POST queues without a demo scenario",
+          "2026-10-25 integration checkpoint: TestSharedIdentityFiltersAndHistory, runtime schema checks and four-scenario E2E PASS: transaction provider/scenario filters, scoped pagination, UTC series and live source freshness; browser dashboard uses real API."
         ],
         "runtime_verified": true
       }
@@ -357,11 +361,12 @@
       "acceptance": [
         "Web and Flutter read same case; foreign tenant returns 404; late settlement becomes `EVIDENCE_UPDATED`."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
         "tests": [
-          "2026-10-25: TestMobileCaseFiltersAndInvestigationPagination passed on isolated PostgreSQL: assignee/status/scenario filters before pagination, cursor scope, foreign-tenant reads, investigation paging. Live Flutter repository read verified through test/live/product_flow_test.dart."
+          "2026-10-25: TestMobileCaseFiltersAndInvestigationPagination passed on isolated PostgreSQL: assignee/status/scenario filters before pagination, cursor scope, foreign-tenant reads, investigation paging. Live Flutter repository read verified through test/live/product_flow_test.dart.",
+          "2026-10-25 integration checkpoint: Isolated integration tests PASS: case filters, multi-page evidence/history/investigations, 110-row event/audit histories and tenant-scoped cursors. Browser reads coherent version-bracketed case snapshots."
         ],
         "runtime_verified": true
       }
@@ -380,12 +385,13 @@
       "acceptance": [
         "Matching version resolves with reason, stale version 412, same retry creates one decision; Flutter/web agree."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
         "tests": [
           "2026-10-25: Flutter lost-reply/same-key replay and 412 UI acknowledgement tests passed; opt-in live Flutter client test verified stale decision 412, later resolution, and preserved case events.",
-          "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json."
+          "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json.",
+          "2026-10-25 integration checkpoint: Real Chromium test PASS: late settlement causes 412, explicit evidence acknowledgement, successful decision reply lost then exact key/body/version retry after reload yields one resolution. Reviewer-role API tests PASS. Native process restart check remains pending."
         ],
         "runtime_verified": true
       }
@@ -404,11 +410,12 @@
       "acceptance": [
         "Fabricated evidence ID rejected; AI cannot set payment/settlement statuses, close case, or invoke transfer API."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
         "tests": [
-          "2026-10-25: Investigation paging regression passed on isolated PostgreSQL; real Flutter client checked OFFLINE_STUB evidence IDs against case evidence. Bedrock integration remains absent."
+          "2026-10-25: Investigation paging regression passed on isolated PostgreSQL; real Flutter client checked OFFLINE_STUB evidence IDs against case evidence. Bedrock integration remains absent.",
+          "2026-10-25 integration checkpoint: Durable investigation pipeline and Bedrock Converse adapter implemented. Fake-provider unit tests and TestDurableInvestigationJobsAndFailureIsolation PASS for citation/output rejection, retry exhaustion, completion replay and lease recovery. Offline live browser/E2E PASS. Real AWS invocation NOT_RUN."
         ],
         "runtime_verified": true
       }
@@ -428,11 +435,13 @@
       "acceptance": [
         "Authorized owner can create/advance scenarios; viewer cannot; request and response exactly match OpenAPI."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "2026-10-25 integration checkpoint: Live Chromium owner creates/advances/assigns a scenario via actual BFF/API; viewer mutations denied. Runtime contracts and four-scenario E2E PASS."
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -477,16 +486,17 @@
       "acceptance": [
         "One video/log trace with shared case ID, user ID, timestamps, response codes and no synthetic-vs-real ambiguity."
       ],
-      "status": "BLOCKED",
+      "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
         "tests": [
           "2026-10-25: Flutter client implementation and live product-API review trace now exist; Next.js app and actual web/mobile smoke still required.",
-          "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json."
+          "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json.",
+          "2026-10-25 integration checkpoint: Next.js now exists in the integration checkout and real browser flow passes. Coordinated browser/native harness implemented; native SDK download and execution pending.",
+          "2026-10-25: pinned Linux Flutter analysis and 27 unit/widget/golden tests PASS; native emulator booted, coordinated device acceptance still pending."
         ],
         "runtime_verified": false
-      },
-      "blocker": "Flutter implementation and live API verification exist; cross-client smoke still requires the separately developed Next.js app."
+      }
     },
     {
       "id": "SG-021",
@@ -529,7 +539,9 @@
       "status": "BLOCKED",
       "evidence": {
         "commit": null,
-        "tests": [],
+        "tests": [
+          "2026-10-25 integration checkpoint: Backend scenarios, delivery recovery and real browser rehearsal PASS. Two fresh coordinated browser/native runs and final CI still pending; AWS remains deferred."
+        ],
         "runtime_verified": false
       },
       "blocker": "Final acceptance requires cross-client smoke and the deferred AWS gate."

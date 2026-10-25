@@ -31,3 +31,36 @@ make frontend-check frontend-test frontend-build
 `make test-integration` creates one disposable PostgreSQL container, runs each Go integration test on a freshly migrated/seeded database, and removes only that container. It fails on skipped integration tests. `make test-e2e` runs synthetic scenarios and service restart recovery against the selected Compose project; run it when no manual reviewer is using that demo.
 
 Mobile setup and native acceptance are tracked in the integration progress report. The shared host Flutter installation may differ from the pinned mobile SDK; do not assume a successful web build verifies the native app.
+
+## Android toolchain and review
+
+The mobile project pins Flutter 3.41.7 (Dart 3.11.5), Java 21, Android platform/build-tools 36 and an API 35 x86_64 emulator. On Linux x86_64 the project installer uses official archives, verified published checksums and an isolated `.tools/` directory. Downloads resume after interruption. It requires Docker for the pinned JDK image and explicit acceptance of Google's SDK licence:
+
+```sh
+python3 scripts/setup_mobile.py --accept-android-license
+python3 scripts/mobile.py pub get --enforce-lockfile
+python3 mobile_app/scripts/sync_fixtures.py --check
+python3 scripts/mobile.py analyze
+python3 scripts/mobile.py test --coverage
+python3 scripts/mobile.py build apk --debug
+python3 mobile_app/scripts/start_android_emulator.py --headless
+python3 mobile_app/scripts/run_live_android.py --device emulator-5554
+```
+
+Pass the SDK licence flag only after reading and accepting the linked terms printed by the installer. The installation leaves shared Flutter, Java and Android settings unchanged. Exact official download URLs/checksums are recorded in `docs/mobile-toolchain-lock.json`. Other hosts may provide Flutter 3.41.7 through `FLUTTER_BIN`, Java 21 through `JAVA_HOME`, and a compatible Android SDK through `ANDROID_HOME`; the wrappers select project tools when they exist. Native iOS requires a compatible macOS/Xcode installation and is not verified on this Linux host.
+
+The native harness authenticates separate owner/reviewer identities in process memory and supplies a short-lived reviewer session through a random loopback test endpoint. Access codes are not compiled into the app. It checks the late-settlement 412 conflict, explicit acknowledgement, a lost successful reply, app process termination, encrypted pending-decision restoration and exact idempotent retry. It verifies one final reviewer decision through the product API. Test fault injection exists only in `integration_test/`.
+
+For an actual browser/native handoff, start one emulator, then run:
+
+```sh
+make frontend-install
+cd settlegraph-web
+npx playwright install chromium
+cd ..
+make test-cross-client
+```
+
+This creates two consecutive fresh test deployments with random loopback ports, separate product/BankSim databases and `settlegraph-test-*` project names. A browser owner starts/assigns/investigates a case; Android reviews that exact case while the browser releases the late settlement. Only volumes belonging to those newly created test projects are removed. The normal local demo and its records remain intact. Screenshots, logs and credential-free case/version/actor traces are stored under ignored `verification/`; `verification/latest-acceptance.json` records the tested Git commit and whether the working tree had changes. A passing run is evidence only after the command actually completes.
+
+The offline investigation provider is the local default. See [Bedrock configuration and its external acceptance gate](bedrock.md) for the optional adapter. Production identity, live AWS deployment and real financial providers remain separate work.

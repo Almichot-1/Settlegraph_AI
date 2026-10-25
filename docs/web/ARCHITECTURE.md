@@ -137,7 +137,7 @@ The control room calls only four public demo operations: `listDemoScenarios`, `c
 
 ![Mock to live](diagrams/06_modes.svg)
 
-Use `SETTLEGRAPH_DATA_MODE=mock` for local design. The existing starter serves synthetic, stateful responses from `src/server/mock-engine.ts`; it is not a substitute for the Go ledger and resets on server restart. Use `SETTLEGRAPH_DATA_MODE=backend` and server-only `SETTLEGRAPH_API_BASE_URL` when the Go API is available. Both paths must honor **the same OpenAPI DTOs, status codes and operation names**.
+Use `SETTLEGRAPH_DATA_MODE=mock` for local design. The web app serves synthetic, stateful responses from `src/server/mock-engine.ts`; it is not a substitute for the Go ledger and resets on server restart. Use `SETTLEGRAPH_DATA_MODE=backend` and server-only `SETTLEGRAPH_API_BASE_URL` when the Go API is available. Both paths must honor **the same OpenAPI DTOs, status codes and operation names**.
 
 Do not change backend field names to simplify React components. If the backend agent proposes a breaking change, edit `contracts/settlegraph-public.openapi.yaml` first, add a migration note, regenerate TypeScript types, and inform Flutter. In the meantime isolate temporary mapping in the BFF rather than silently forking the API contract.
 
@@ -153,7 +153,7 @@ Do not change backend field names to simplify React components. If the backend a
 
 ## 12. Environment and delivery architecture
 
-**Development:** `cp settlegraph-web/.env.example settlegraph-web/.env.local` and run `npm install; npm run typecheck; npm test; npm run dev`. Backend mode uses `SETTLEGRAPH_API_BASE_URL=http://localhost:8080`, `DEMO_ACCESS_CODE` set server-side and mock mode disabled. No browser needs direct CORS access to the Go API.
+**Development:** `cp settlegraph-web/.env.example settlegraph-web/.env.local` and run `npm ci; npm run typecheck; npm test; npm run dev`. Backend mode uses `SETTLEGRAPH_API_BASE_URL=http://localhost:8080`, `DEMO_ACCESS_CODE` set server-side and mock mode disabled. No browser needs direct CORS access to the Go API.
 
 **Production target:** a Next.js Node server behind HTTPS/reverse proxy, Go API on a private or access-controlled endpoint, restrictive egress and origin policy, runtime-injected secrets, log scrubbing, server-side session controls, security headers and health checks. AWS could host this on App Runner/ECS/other managed container service, but select the simplest supported runtime and verify the backend endpoints first. The Next.js proxy should never expose arbitrary upstream URL or forward arbitrary HTTP headers.
 
@@ -190,7 +190,7 @@ Not building a payments gateway, live bank dashboard, customer funds transfer, p
 ## 16. Reference implementations
 
 - Existing source: `starter/settlegraph-web/`; its current structure is a scaffold, not a completed production product.
-- Canonical contract: `contracts/settlegraph-public.openapi.yaml` (39 operations, `2.0.0-draft`).
+- Canonical contract: `contracts/settlegraph-public.openapi.yaml` (40 operations, `2.0.0-draft`).
 - Endpoints and priority: `docs/API_OPERATION_MATRIX.csv` and `docs/API_OPERATION_MATRIX.json`.
 - Detailed tasks and proof gates: `IMPLEMENTATION_PLAN.md`.
 - Next.js 15 data security: https://nextjs.org/docs/15/app/guides/data-security

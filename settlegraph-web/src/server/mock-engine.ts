@@ -1,3 +1,4 @@
+import membersFixture from './members.json';
 /** In-memory DEMO ONLY. The backend owns real business logic. This mock never claims live bank data. */
 import type * as T from '@/generated/types';
 import demoSession from './demo-session-response.json';
@@ -194,6 +195,7 @@ export async function mockApi(req:Request):Promise<Response>{
  if(method==='GET' && p==='/health/ready')return output(200,{status:'UP',service:'settlegraph-web-mock'});
  if(method==='GET' && p==='/v1/me')return output(200,demoSession.user);
  if(method==='GET' && p==='/v1/providers')return output(200,paginate(s.providers,url));
+ if(method==='GET' && p==='/v1/members')return output(200,paginate(membersFixture.items,url));
  if(method==='GET' && p==='/v1/accounts')return output(200,{items:[],next_cursor:null});
  if(method==='GET' && p==='/v1/dashboard/summary'){
   const payments=s.transactions.filter(t=>t.state==='ACCEPTED');const settlements=s.settlements;

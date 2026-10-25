@@ -7,6 +7,7 @@ import '../core/network/authenticated_http_client.dart';
 import '../core/services/session_manager.dart';
 import '../core/storage/local_storage.dart';
 import '../core/storage/secure_storage.dart';
+import '../core/storage/pending_decision_storage.dart';
 import '../core/testing/fixture_api_client.dart';
 import '../features/auth/auth_injection.dart';
 import '../features/auth/data/repositories/auth_repository.dart';
@@ -28,6 +29,7 @@ class AppDependencies {
   static Future<AppDependencies> create({
     AppConfig? config,
     SessionStorage? storage,
+    PendingDecisionStorage? pendingStorage,
     ApiClient? api,
     bool test = false,
   }) async {
@@ -44,6 +46,12 @@ class AppDependencies {
           (c.isFixture
               ? await FixtureApiClient.load()
               : AuthenticatedHttpClient(c.apiBaseUrl, sessions)),
+    );
+    di.registerSingleton<PendingDecisionStorage>(
+      pendingStorage ??
+          (c.isFixture || test
+              ? MemoryPendingDecisionStorage()
+              : SecurePendingDecisionStorage(apiBaseUrl: c.apiBaseUrl)),
     );
     registerAuth(di);
     registerCases(di);

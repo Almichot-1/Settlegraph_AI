@@ -88,72 +88,42 @@ func (a API) createInvestigation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case unavailable", reqID(r))
 		return
 	}
-	rows, err := tx.QueryContext(r.Context(), "SELECT evidence_kind,evidence_id FROM case_evidence WHERE organization_id=$1 AND case_id=$2 ORDER BY evidence_id", org, caseID)
+	packet, err := investigation.LoadPacket(r.Context(), tx, org, caseID, kind, version)
+	if errors.Is(err, investigation.ErrEvidence) {
+		writeError(w, 400, "BAD_REQUEST", "Case evidence is unavailable or exceeds bounded analysis limits", reqID(r))
+		return
+	}
 	if err != nil {
-		writeError(w, 503, "SERVICE_UNAVAILABLE", "Evidence unavailable", reqID(r))
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Evidence snapshot unavailable", reqID(r))
 		return
 	}
-	type evidence struct{ kind, id string }
-	list := []evidence{}
-	ids := []string{}
-	for rows.Next() {
-		var e evidence
-		if err = rows.Scan(&e.kind, &e.id); err != nil {
-			rows.Close()
-			writeError(w, 503, "SERVICE_UNAVAILABLE", "Evidence unavailable", reqID(r))
-			return
-		}
-		list = append(list, e)
-		ids = append(ids, e.id)
-	}
-	err = rows.Err()
-	rows.Close()
+	packetJSON, err := packet.Canonical()
 	if err != nil {
-		writeError(w, 503, "SERVICE_UNAVAILABLE", "Evidence unavailable", reqID(r))
+		writeError(w, 400, "BAD_REQUEST", "Evidence packet exceeds analysis limits", reqID(r))
 		return
 	}
-	for _, e := range list {
-		table := ""
-		switch e.kind {
-		case "ORDER":
-			table = "merchant_orders"
-		case "OBSERVATION":
-			table = "observations"
-		case "SOURCE_STATUS":
-			table = "source_status_snapshots"
-		default:
-			writeError(w, 500, "INTERNAL_ERROR", "Unknown evidence kind", reqID(r))
-			return
-		}
-		var exists bool
-		if err = tx.QueryRowContext(r.Context(), "SELECT EXISTS(SELECT 1 FROM "+table+" WHERE organization_id=$1 AND id=$2)", org, e.id).Scan(&exists); err != nil || !exists {
-			writeError(w, 500, "INTERNAL_ERROR", "Invalid evidence reference", reqID(r))
-			return
-		}
-	}
-	result := investigation.Offline(kind, ids)
-	if investigation.ValidateResult(result, ids) != nil {
-		writeError(w, 500, "INTERNAL_ERROR", "Investigation evidence rejected", reqID(r))
+	snapshot, err := packet.Hash()
+	if err != nil {
+		writeError(w, 500, "INTERNAL_ERROR", "Snapshot unavailable", reqID(r))
 		return
 	}
-	resultJSON, _ := json.Marshal(result)
-	snapshot := investigation.SnapshotHash(ids)
+	provider := a.Config.InvestigationProvider
+	if provider == "" {
+		provider = "OFFLINE_STUB"
+	}
 	var investigationID string
-	var created, completed time.Time
-	err = tx.QueryRowContext(r.Context(), `INSERT INTO ai_investigations(organization_id,case_id,status,provider,evidence_snapshot_hash,result,completed_at) VALUES($1,$2,'COMPLETED','OFFLINE_STUB',$3,$4,now()) RETURNING id,created_at,completed_at`, org, caseID, snapshot, resultJSON).Scan(&investigationID, &created, &completed)
+	var created time.Time
+	err = tx.QueryRowContext(r.Context(), `INSERT INTO ai_investigations(organization_id,case_id,status,provider,evidence_snapshot_hash,evidence_snapshot,actor_sub,prompt_version) VALUES($1,$2,'QUEUED',$3,$4,$5,$6,$7) RETURNING id,created_at`, org, caseID, provider, snapshot, packetJSON, actor, investigation.PromptVersion).Scan(&investigationID, &created)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Investigation persistence failed", reqID(r))
 		return
 	}
-	if _, err = tx.ExecContext(r.Context(), "UPDATE investigation_cases SET version=version+1,updated_at=now() WHERE organization_id=$1 AND id=$2", org, caseID); err != nil {
-		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case update failed", reqID(r))
+	payload, _ := json.Marshal(map[string]string{"investigation_id": investigationID})
+	if _, err = tx.ExecContext(r.Context(), `INSERT INTO jobs(organization_id,job_kind,job_key,payload) VALUES($1,'INVESTIGATE',$2,$3)`, org, "investigation:"+investigationID, payload); err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Investigation queue failed", reqID(r))
 		return
 	}
-	if _, err = tx.ExecContext(r.Context(), "INSERT INTO case_events(organization_id,case_id,version,action,actor,message) VALUES($1,$2,$3,'INVESTIGATION_COMPLETED',$4,'Offline evidence analysis completed')", org, caseID, version+1, actor); err != nil {
-		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case event failed", reqID(r))
-		return
-	}
-	response := map[string]any{"id": investigationID, "case_id": caseID, "status": "COMPLETED", "provider": "OFFLINE_STUB", "created_at": created.UTC().Format(time.RFC3339), "completed_at": completed.UTC().Format(time.RFC3339), "evidence_snapshot_hash": snapshot, "result": result}
+	response := map[string]any{"id": investigationID, "case_id": caseID, "status": "QUEUED", "provider": provider, "created_at": created.UTC().Format(time.RFC3339), "completed_at": nil, "evidence_snapshot_hash": snapshot}
 	responseJSON, _ := json.Marshal(response)
 	_, err = tx.ExecContext(r.Context(), `INSERT INTO idempotency_requests(organization_id,actor_sub,method,route_template,idempotency_key,request_sha256,response_status,response_body,processing_state) VALUES($1,$2,'POST',$3,$4,$5,202,$6,'COMPLETED')`, org, actor, template, key, digest, responseJSON)
 	if err != nil {
@@ -185,7 +155,11 @@ func scanInvestigation(rows interface{ Scan(...any) error }) (map[string]any, er
 	if completed.Valid {
 		finished = completed.Time.UTC().Format(time.RFC3339)
 	}
-	return map[string]any{"id": id, "case_id": caseID, "status": status, "provider": provider, "created_at": created.UTC().Format(time.RFC3339), "completed_at": finished, "evidence_snapshot_hash": hash, "result": result}, nil
+	item := map[string]any{"id": id, "case_id": caseID, "status": status, "provider": provider, "created_at": created.UTC().Format(time.RFC3339), "completed_at": finished, "evidence_snapshot_hash": hash}
+	if result != nil {
+		item["result"] = result
+	}
+	return item, nil
 }
 func (a API) listInvestigations(w http.ResponseWriter, r *http.Request) {
 	org, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER")

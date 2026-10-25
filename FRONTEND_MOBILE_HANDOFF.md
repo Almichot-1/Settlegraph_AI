@@ -154,3 +154,10 @@ Use secure storage for app access token, do not log it. For Flutter case decisio
 ## Implemented Flutter workspace
 
 See [`mobile_app/README.md`](mobile_app/README.md). Default `APP_ENV=fixture` is a labeled sample workspace; `APP_ENV=demo` connects to the configurable product API with secure native session storage. Case filters and investigation pagination now follow the documented contract. Android native sample and live delayed-settlement review passed on 25 October 2026; iOS build/device verification is blocked by the local Xcode platform/runtime mismatch. Next.js joint smoke remains outstanding.
+
+
+## Integrated local workflow
+
+The integration checkout now includes both clients and the backend. Start with `make bootstrap && make local-up`; see [the local runbook](docs/local-testing.md). `GET /v1/members` returns the tenant's real assignment directory for OWNER/ANALYST. Seeded reviewer, analyst and viewer sessions use distinct server-configured access codes; display-name input never changes a role. OWNER/REVIEWER can decide; OWNER/ANALYST can assign or request analysis. Investigations now return QUEUED asynchronously and must be polled to a terminal status. Web cookies expire with the token. Both clients preserve an uncertain decision's exact body, key and version before allowing a replacement.
+
+Browser tests now verify actual BFF/API assignment, investigations, stale evidence and lost-reply retry. Native and joint test results for this integration are reported in the progress log; older standalone mobile evidence above is historical and does not prove this combined revision. Human client-owner contract acknowledgement remains separate from automated tests.

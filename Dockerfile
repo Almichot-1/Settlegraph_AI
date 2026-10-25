@@ -5,7 +5,7 @@ RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
 ARG TARGET
-RUN CGO_ENABLED=0 go build -trimpath -o /service ./cmd/${TARGET}
+RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 go build -trimpath -o /service ./cmd/${TARGET}
 
 FROM alpine:3.21
 RUN addgroup -S app && adduser -S -G app app

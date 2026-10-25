@@ -1,0 +1,13 @@
+# Optional Bedrock investigations
+
+The default `INVESTIGATION_PROVIDER=OFFLINE_STUB` is deterministic and needs no AWS account. The API persists a QUEUED investigation and immutable evidence snapshot in the same transaction as its durable job. A separate worker loop performs analysis; clients poll the existing investigation endpoint. Reconciliation continues independently while analysis is running.
+
+Explicit `INVESTIGATION_PROVIDER=BEDROCK` requires `AWS_REGION` and `BEDROCK_MODEL_ID` on both API and worker. Supply AWS credentials through the SDK's runtime credential chain with narrowly scoped Bedrock invocation permission. The local Compose configuration deliberately does not mount shared AWS credentials. Configure an authorized runtime separately; do not put credentials in source or mobile/browser builds. No AWS deployment or real invocation has been performed for this integration.
+
+The adapter uses AWS SDK v2 Converse with a strict `explain_evidence` output schema. This schema tool returns data only; there is no tool execution. A packet contains bounded product-visible case attachments, its case version and a canonical content hash. It excludes the private BankSim ledger. The worker independently checks citations, field/count/length limits and conservative financial wording before committing a result. AI completion adds an analysis event and case version; financial observations, match proofs and human decisions remain separate.
+
+Calls have a 125-second deadline (including possible first-schema compilation); work has a 150-second budget inside a 180-second job lease. SDK retries are disabled in favor of at most five durable attempts with backoff. Provider failure ends as FAILED after exhaustion; invalid output ends as REJECTED. Neither silently falls back to an analysis labelled Bedrock. A lost lease cannot publish a result; completed/rejected/failed rows and their provenance are immutable. Replayed completed jobs do not invoke the model or duplicate timeline events.
+
+Local evidence: fake Converse client tests cover request configuration, foreign citations, unknown fields, unsupported settlement wording and provider failures. PostgreSQL worker tests cover queued creation, immutable history, completion replay, rejected output, bounded retry exhaustion and expired lease recovery. These establish local behavior; IAM/model/region compatibility and an actual account invocation are external acceptance checks.
+
+Provider reference: [AWS structured outputs](https://docs.aws.amazon.com/bedrock/latest/userguide/structured-output.html), [Converse API](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_Converse.html). A model must support the requested strict tool schema; an unsupported model fails visibly.

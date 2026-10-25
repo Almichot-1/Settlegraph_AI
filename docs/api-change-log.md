@@ -36,3 +36,9 @@ No OpenAPI or fixture shape changed. `listCases` now applies documented `assigne
 - Demo login retains its JSON shape. Optional server-configured reviewer/analyst/viewer access codes select distinct seeded principals. Display-name input does not rename shared identities or grant a role. Existing owner code remains supported.
 - Permission correction: decisions require OWNER/REVIEWER, matching the handoff and Flutter. ANALYST retains assignment/investigation permissions.
 - Runtime corrections: transaction provider/scenario filters are applied before pagination; case-event/match/audit continuation is implemented; dashboard series enforces its required from/to range and half-open UTC buckets. Callers that previously omitted required dates must supply them.
+
+### Local integration reliability
+
+Nonbreaking response documentation: every rate-limited public POST now declares 429 with `Retry-After`; demo authentication declares its existing 401 response. Provider webhook delivery is excluded from the user mutation limiter. Defaults are 30 demo logins and 120 mutations per minute per API process; configure limits through the API runtime environment.
+
+Investigation creation retains the 202 contract but now returns QUEUED promptly. The durable worker publishes COMPLETED/REJECTED/FAILED through polling; `result` is omitted until available. Canonical evidence snapshots/provenance are immutable. OFFLINE_STUB remains the default, and explicit Bedrock failure is visible rather than silently converted to an offline result. No financial observation or matching contract changes.

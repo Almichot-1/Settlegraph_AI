@@ -91,10 +91,15 @@ void main() {
         )).items.any((c) => c.id == id),
         isTrue,
       );
-      final analysis = await d.get<InvestigationsRepository>().create(
+      var analysis = await d.get<InvestigationsRepository>().create(
         id,
         const Uuid().v4(),
       );
+      for (var attempt = 0; attempt < 80 && analysis.pending; attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        analysis = await d.get<InvestigationsRepository>().get(id, analysis.id);
+      }
+      expect(analysis.completed, isTrue);
       expect(analysis.provider, 'OFFLINE_STUB');
       bundle = await repository.detail(id);
       final allowed = bundle.evidence.map((e) => e.id).toSet();

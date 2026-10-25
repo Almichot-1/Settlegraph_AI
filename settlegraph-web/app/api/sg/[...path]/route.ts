@@ -1,28 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { sameOrigin, publicOrigin, allowedOperation, limitedText } from '@/server/security';
 import { mockApi } from '@/server/mock-engine';
 
 const allowedMethods = new Set(['GET', 'POST']);
-
-function isSameOrigin(req: NextRequest): boolean {
-  const origin = req.headers.get('origin');
-  if (origin) {
-    return origin === req.nextUrl.origin;
-  }
-  const referer = req.headers.get('referer');
-  if (referer) {
-    try {
-      return new URL(referer).origin === req.nextUrl.origin;
-    } catch {
-      return false;
-    }
-  }
-  const secFetchSite = req.headers.get('sec-fetch-site');
-  if (secFetchSite && secFetchSite !== 'same-origin' && secFetchSite !== 'none') {
-    return false;
-  }
-  return true;
-}
 
 function isRestrictedPath(endpoint: string): boolean {
   const normalized = endpoint.toLowerCase().replace(/\/+$/, '');
@@ -72,9 +53,12 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     );
   }
 
+  if (!allowedOperation(method, endpoint)) {
+    return NextResponse.json({error:{code:'NOT_FOUND', message:'Unknown public operation', request_id:'frontend'}}, {status:404});
+  }
   // 4. Same-origin CSRF check on mutations
   if (method !== 'GET') {
-    if (!isSameOrigin(req)) {
+    if (!sameOrigin(req, publicOrigin(req))) {
       return NextResponse.json(
         { error: { code: 'FORBIDDEN', message: 'Cross-origin mutation denied', request_id: 'frontend' } },
         { status: 403 }
@@ -96,9 +80,11 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     );
   }
 
-  // 6. Mock mode handling
+  let body: string | undefined;
+  try { body = method === 'GET' ? undefined : await limitedText(req); }
+  catch { return NextResponse.json({error:{code:'PAYLOAD_TOO_LARGE',message:'Request body is too large or invalid',request_id:'frontend'}}, {status:413}); }
   if (process.env.SETTLEGRAPH_DATA_MODE !== 'backend') {
-    return mockApi(req);
+    return mockApi(new Request(req.url,{method,headers:req.headers,body}));
   }
 
   // 7. Backend proxy with transport header propagation
@@ -133,8 +119,6 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
   const requestId = req.headers.get('x-request-id') || crypto.randomUUID();
   headers.set('X-Request-Id', requestId);
 
-  const body = method === 'GET' ? undefined : await req.text();
-
   const upstream = await fetch(base + endpoint + req.nextUrl.search, {
     method,
     headers,
@@ -159,6 +143,15 @@ async function handle(req: NextRequest, context: { params: Promise<{ path: strin
     responseHeaders.set('X-Request-Id', upstream.headers.get('x-request-id')!);
   }
 
+  for (const header of ['etag', 'retry-after']) {
+    const value = upstream.headers.get(header);
+    if (value) responseHeaders.set(header, value);
+  }
+  if (upstream.status === 401) {
+    const expired = NextResponse.json({error:{code:'UNAUTHORIZED',message:'Session expired. Sign in again.',request_id:requestId}}, {status:401, headers:responseHeaders});
+    expired.cookies.delete('sg_token'); expired.cookies.delete('sg_org');
+    return expired;
+  }
   return new Response(upstreamText, {
     status: upstream.status,
     headers: responseHeaders,

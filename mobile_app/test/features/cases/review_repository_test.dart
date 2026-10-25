@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:convert';
+import 'package:settlegraph_mobile/core/storage/pending_decision_storage.dart';
 import 'package:settlegraph_mobile/app/injection_container.dart';
 import 'package:settlegraph_mobile/core/config/app_config.dart';
 import 'package:settlegraph_mobile/core/error/failures.dart';
@@ -161,4 +163,82 @@ void main() {
     expect(cubit.state.failure!.status, 403);
     expect((await repo.detail(id)).caseRecord.version, 3);
   });
+  test(
+    'pending decision survives repository restart and is isolated by user/workspace',
+    () async {
+      final wire = UncertainApi(d.get<ApiClient>());
+      final storage = MemoryPendingDecisionStorage();
+      var first = CasesRepositoryImpl(
+        CasesRemoteDatasource(wire),
+        d.sessions,
+        storage: storage,
+      );
+      final record = (await first.detail(id)).caseRecord;
+      final cubit = DecisionCubit(first, record);
+      await cubit.submit(
+        'RESOLVE',
+        'Reviewed the synthetic source records.',
+        canReview: true,
+      );
+      expect(cubit.state.uncertain, isTrue);
+      await cubit.close();
+      first.dispose();
+      final restored = CasesRepositoryImpl(
+        CasesRemoteDatasource(wire),
+        d.sessions,
+        storage: storage,
+      );
+      addTearDown(restored.dispose);
+      final updated = (await restored.detail(id)).caseRecord;
+      final retry = DecisionCubit(restored, updated);
+      addTearDown(retry.close);
+      expect(retry.pending, isNotNull);
+      await retry.submit(
+        'REOPEN',
+        'Changed input must not replace the pending envelope.',
+        canReview: true,
+      );
+      expect(retry.state.completed, isTrue);
+      expect(wire.attempts.length, 2);
+      expect(wire.attempts[0].headers, wire.attempts[1].headers);
+      expect(wire.attempts[0].body, wire.attempts[1].body);
+      expect(
+        (await repo.detail(
+          id,
+        )).events.where((e) => e.type == 'RESOLVED').length,
+        1,
+      );
+      final saved = d.sessions.session!;
+      final scope = '${saved.organizationId}:${saved.user.id}';
+      storage.values[scope] = jsonEncode({
+        id: {
+          'decision': 'RESOLVE',
+          'reason': 'Old unconfirmed review',
+          'version': 3,
+          'key': 'old-review-key',
+          'created_at': DateTime.now()
+              .subtract(const Duration(hours: 2))
+              .millisecondsSinceEpoch,
+        },
+      });
+      final expired = CasesRepositoryImpl(
+        CasesRemoteDatasource(wire),
+        d.sessions,
+        storage: storage,
+      );
+      addTearDown(expired.dispose);
+      await expired.detail(id);
+      expect(expired.pending(id), isNull);
+      d.sessions.update(saved.copyWith(organizationId: 'other-workspace'));
+      final isolated = CasesRepositoryImpl(
+        CasesRemoteDatasource(wire),
+        d.sessions,
+        storage: storage,
+      );
+      addTearDown(isolated.dispose);
+      await isolated.detail(id);
+      expect(isolated.pending(id), isNull);
+      expect(wire.attempts.length, 2);
+    },
+  );
 }

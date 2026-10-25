@@ -1,44 +1,53 @@
 'use client';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, Search, X } from 'lucide-react';
+import { useWorkspaceSession,workspaceScope } from '@/lib/session';
+import { activeScenario } from '@/lib/scenario';
 import { api } from '@/lib/api';
 import type { Transaction, Provider } from '@/generated/types';
 import { formatMoney, shortDate } from '@/lib/format';
 import { Badge, Empty, Failure, Loading, Panel, SectionHeading } from '@/components/ui';
 
 export default function Transactions() {
+  const scope=workspaceScope(useWorkspaceSession());
+  const [scenario,setScenario]=useState<string|null>(null);
+  useEffect(()=>setScenario(activeScenario(scope)),[scope]);
   const [items, setItems] = useState<Transaction[]>([]);
   const [providers, setProviders] = useState<Provider[]>([]);
   const [provider, setProvider] = useState('');
   const [search, setSearch] = useState('');
   const [cursor, setCursor] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const generation=useRef(0);
   const [error, setError] = useState<unknown>(null);
   const [selected, setSelected] = useState<Transaction | null>(null);
 
   const load = useCallback(
     async (next?: string) => {
+      const current=++generation.current;
       setBusy(true);
       try {
         const [t, p] = await Promise.all([
-          api.listTransactions({ limit: 30, provider_id: provider || undefined, cursor: next }),
+          api.listTransactions({ limit: 30, provider_id: provider || undefined, scenario_run_id:scenario??undefined, cursor: next }),
           api.listProviders(),
         ]);
+        if(current!==generation.current)return;
         setItems((previous) => (next ? [...previous, ...t.items] : t.items));
         setCursor(t.next_cursor);
         setProviders(p.items);
         setError(null);
       } catch (e) {
-        setError(e);
+        if(current===generation.current)setError(e);
       } finally {
-        setBusy(false);
+        if(current===generation.current)setBusy(false);
       }
     },
-    [provider]
+    [provider,scenario]
   );
 
   useEffect(() => {
     void load();
+    return ()=>{generation.current++;};
   }, [load]);
 
   // Accessible keyboard handler: close modal dialog on Escape
@@ -61,6 +70,7 @@ export default function Transactions() {
 
   return (
     <>
+      {scenario&&<p>Scenario {scenario.slice(0,8)} <button className="button button-ghost" onClick={()=>setScenario(null)}>Show all scenarios</button></p>}
       <SectionHeading
         title="Payment activity"
         description="Observed payment records from simulated financial providers."

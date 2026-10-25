@@ -26,6 +26,7 @@ type API struct {
 }
 
 func (a API) Handler() http.Handler {
+	limiter := &rateLimiter{}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/demo/sessions", a.session)
 	mux.HandleFunc("GET /v1/me", a.me)
@@ -64,7 +65,10 @@ func (a API) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/cases/{caseId}/investigations", a.listInvestigations)
 	mux.HandleFunc("GET /v1/cases/{caseId}/investigations/{investigationId}", a.oneInvestigation)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := requestID()
+		id := r.Header.Get("X-Request-Id")
+		if len(id) < 8 || len(id) > 128 || strings.ContainsAny(id, "\r\n ") {
+			id = requestID()
+		}
 		w.Header().Set("X-Request-Id", id)
 		defer func() {
 			if recover() != nil {
@@ -73,7 +77,11 @@ func (a API) Handler() http.Handler {
 		}()
 		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 		defer cancel()
-		mux.ServeHTTP(w, r.WithContext(context.WithValue(ctx, requestIDKey{}, id)))
+		r = r.WithContext(context.WithValue(ctx, requestIDKey{}, id))
+		if !a.rateLimit(limiter, w, r) {
+			return
+		}
+		mux.ServeHTTP(w, r)
 	})
 }
 

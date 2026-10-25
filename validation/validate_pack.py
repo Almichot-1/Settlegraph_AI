@@ -66,6 +66,7 @@ for name in ['bank-event-payment.json','bank-event-settlement.json']:
  check(not issues,f'{name}: {issues[0] if issues else "OK"}')
 
 ai=json.loads((C/'ai-investigation.schema.json').read_text())
+check(ai==json.loads((ROOT/'internal/investigation/result.schema.json').read_text()),'Embedded Bedrock result schema drift')
 valid=json.loads((F/'ai-investigation-valid.json').read_text())
 check(not list(Draft202012Validator(ai).iter_errors(valid)),'AI valid fixture rejected')
 

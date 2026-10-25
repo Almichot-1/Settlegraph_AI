@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Building2, RefreshCw } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { DashboardSummary, DashboardSeries, Case, Transaction } from '@/generated/types';
@@ -12,34 +12,37 @@ export default function Dashboard() {
   const [series, setSeries] = useState<DashboardSeries | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [tx, setTx] = useState<Transaction[]>([]);
+  const generation=useRef(0);
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(true);
 
   const load = useCallback(async () => {
+    const current=++generation.current;
     setBusy(true);
     try {
-      const to = new Date();
-      const from = new Date(Date.now() - 7 * 86400000);
-      const [d, s, c, t] = await Promise.all([
-        api.getDashboardSummary(),
-        api.getDashboardSeries({ from: from.toISOString(), to: to.toISOString(), granularity: 'DAY' }),
-        api.listCases({ limit: 4 }),
-        api.listTransactions({ limit: 5 }),
+      const d=await api.getDashboardSummary();
+      const to=new Date(Date.parse(d.as_of)+1);
+      const from=new Date(to.getTime()-7*86400000);
+      const [s,c,t]=await Promise.all([
+        api.getDashboardSeries({from:from.toISOString(),to:to.toISOString(),granularity:'DAY'}),
+        api.listCases({limit:4}),api.listTransactions({limit:5})
       ]);
+      if(current!==generation.current)return;
       setData(d);
       setSeries(s);
       setCases(c.items);
       setTx(t.items);
       setError(null);
     } catch (e) {
-      setError(e);
+      if(current===generation.current)setError(e);
     } finally {
-      setBusy(false);
+      if(current===generation.current)setBusy(false);
     }
   }, []);
 
   useEffect(() => {
     void load();
+    return ()=>{generation.current++;};
   }, [load]);
 
   if (busy && !data) return <Loading text="Loading financial overview…" />;

@@ -81,3 +81,15 @@ local-status:
 	python3 scripts/local_stack.py status
 local-logs:
 	python3 scripts/local_stack.py logs
+
+.PHONY: test-web-live test-cross-client mobile-check
+
+test-web-live:
+	cd settlegraph-web && npm run test:live
+
+test-cross-client:
+	$(PYTHON) scripts/test_cross_client.py
+
+mobile-check:
+	python3 scripts/mobile.py analyze
+	python3 scripts/mobile.py test --coverage

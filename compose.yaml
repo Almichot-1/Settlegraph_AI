@@ -40,6 +40,11 @@ services:
       args: {TARGET: api}
     environment:
       APP_MODE: demo
+      DEMO_AUTH_RATE_LIMIT: ${DEMO_AUTH_RATE_LIMIT:-30}
+      EXPENSIVE_RATE_LIMIT: ${EXPENSIVE_RATE_LIMIT:-120}
+      INVESTIGATION_PROVIDER: ${INVESTIGATION_PROVIDER:-OFFLINE_STUB}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
+      AWS_REGION: ${AWS_REGION:-}
       DEMO_ACCESS_CODE: ${DEMO_ACCESS_CODE:?run make init-demo-env}
       DEMO_REVIEWER_ACCESS_CODE: ${DEMO_REVIEWER_ACCESS_CODE:-}
       DEMO_ANALYST_ACCESS_CODE: ${DEMO_ANALYST_ACCESS_CODE:-}
@@ -67,6 +72,9 @@ services:
       args: {TARGET: worker}
     environment:
       APP_MODE: demo
+      INVESTIGATION_PROVIDER: ${INVESTIGATION_PROVIDER:-OFFLINE_STUB}
+      BEDROCK_MODEL_ID: ${BEDROCK_MODEL_ID:-}
+      AWS_REGION: ${AWS_REGION:-}
       PRODUCT_DATABASE_URL: postgres://settlegraph@product-db:5432/settlegraph?sslmode=disable
       LISTEN_ADDR: :8081
     depends_on:

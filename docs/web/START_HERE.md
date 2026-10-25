@@ -1,47 +1,24 @@
-# SETTLEGRAPH AI — NEXT.JS WEB WORKSTATION
+# Next.js workstation in the integrated repository
 
-**Send this whole ZIP to the WEB developer.** It includes the architecture blueprint, diagrams, working starter source, exact backend API contract, sample payloads, and implementation/review instructions.
+The web app is in `settlegraph-web/`, alongside the Go services and `mobile_app/`. Read [the architecture](ARCHITECTURE.md), [the shared contract](../../contracts/settlegraph-public.openapi.yaml), [the generated operation manifest](../OPERATION_MANIFEST.json), [client handoff](../../FRONTEND_MOBILE_HANDOFF.md) and [local testing instructions](../local-testing.md). The public contract currently has 40 operations. Its generated SHA is recorded in `settlegraph-web/src/generated/contract-sha256.txt` and checked automatically.
 
-## Read in this order
+From the repository root:
 
-1. `ARCHITECTURE.pdf` — presentation-ready architecture document with diagrams.
-2. `ARCHITECTURE.md` — authoritative editable engineering detail, same design as PDF.
-3. `IMPLEMENTATION_PLAN.md` — dependency-ordered tickets with acceptance checks.
-4. `contracts/settlegraph-public.openapi.yaml` — exact, shared public API contract; **do not edit silently**.
-5. `docs/API_OPERATION_MATRIX.csv` — all 39 public API operations with MVP/P1/P2 flags.
-6. `DEVELOPER_AGENT_PROMPT.md` — copy directly into the developer's coding assistant.
-7. `starter/settlegraph-web/` — original runnable starter from the previously supplied handoff.
-
-## Kickoff commands
-
-```bash
-cd starter/settlegraph-web
-cp .env.example .env.local
-npm install
-npm run check:contracts
-npm run typecheck
-npm test
-npm run dev
+```sh
+make bootstrap
+make local-up
 ```
-Open `http://localhost:3000`. Start in `SETTLEGRAPH_DATA_MODE=mock`; set `SETTLEGRAPH_API_BASE_URL` server-side only when Go endpoints exist.
 
-## Operating rules
+Open http://localhost:3000/login. The Docker web service uses the real Go API. Local owner sign-in has an explicit development shortcut; role-specific codes are in the ignored root `.env`. Access codes select server-owned identities; entering a different display name does not grant a role. Never copy credentials into `NEXT_PUBLIC_*` variables.
 
-- Separate Git repository; never make modifications inside the autonomous Go backend's repository.
-- Use the same OpenAPI SHA across all three teams: `13fa9283cb3ba51fbed8ed4b0ee9405090acc20b9fb58b0c3cc6368ee1cab83c`.
-- Only the Go backend or its isolated BankSim adapter can determine financial truth. Clients **display** source observations, matching results and reviewed decisions.
-- All data in mock mode and BankSim simulation is synthetic. No real bank balances or actual money movement are implied.
-- Treat DTO schemas, required headers, enum values, success statuses and error shapes as contract, not suggestions.
-- If a backend operation is missing, use mock mode and log a blocker. Never silently create an incompatible temporary endpoint.
-- Make a Git commit and report exact command outputs after each accepted implementation ticket.
+For host editing, follow the hot-reload instructions in the local runbook, then:
 
-## Delivery proof you must send to the team
+```sh
+make frontend-install
+make frontend-check frontend-test frontend-build
+make frontend-dev
+```
 
-- Git revision plus branch
-- Screenshots or short screen recording of delayed settlement scenario
-- Test/build outputs and outstanding failures
-- OpenAPI contract SHA / changes requested
-- Back-end integration status, distinguishing mock-tested from live-tested
-- Security review and unresolved risks
+Mock mode remains available for visual work and is not runtime integration evidence. Keep snake_case fields, money strings, pagination, 202 polling, idempotency keys and quoted case versions compatible with the normative YAML. Propose changes in the shared contract first and regenerate both the types and manifest with `scripts/regenerate_openapi_types.py`.
 
-**Note:** A starter package is not evidence that full runtime or device tests have passed. The backend is under independent development; coordinate integration through the shared public API.
+Actual test results are recorded in [implementation progress](../implementation-progress.md). The coordinated browser/native command is `make test-cross-client`; it must complete before joint acceptance is claimed. AWS and native iOS have separate external verification gates.
