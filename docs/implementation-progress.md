@@ -79,7 +79,7 @@ Backend prerequisites corrected without contract-shape changes: case assignee/st
 
 Port 8080 was occupied by an unrelated local service. Verification used an ephemeral Compose port override for API 9080; private internal service traffic remains unchanged. The existing Pixel_8 emulator had insufficient storage, so a new `SettleGraph_Review` AVD was created without deleting its data. The new emulator uses port 5556. Native verification trace is in ignored `mobile_app/verification/native-live-trace.json`; it contains resource IDs/status/version only, no credentials.
 
-Root CI workflow is implemented but has NOT_RUN on GitHub. iOS device behavior, real multi-role native sessions, TalkBack/VoiceOver manual review, profile-mode performance measurement, process-termination persistence for uncertain decisions, and Next.js/Flutter joint smoke remain outstanding. Current tab pages reload on navigation; preserving tab stacks is a later usability refinement. Local debug release is runnable; production/mobile-store release is not claimed.
+Root CI workflow subsequently passed on GitHub; see the CI verification entry below. iOS device behavior, real multi-role native sessions, TalkBack/VoiceOver manual review, profile-mode performance measurement, process-termination persistence for uncertain decisions, and Next.js/Flutter joint smoke remain outstanding. Current tab pages reload on navigation; preserving tab stacks is a later usability refinement. Local debug release is runnable; production/mobile-store release is not claimed.
 
 Next gate: align iOS platform/runtime, run native iOS flow, and perform actual Next.js/Flutter SG-020 acceptance with the web developer. SG statuses were not promoted to TESTED or ACCEPTED in this mobile pass; direct evidence and current blockers were appended to the existing backlog.
 
@@ -98,3 +98,11 @@ Continued on the user's existing Pixel_8/emulator-5554. Android-arm64 `flutter b
 ### Pre-commit review
 
 Later Pixel profile reinstalls also hit insufficient storage. Flutter automatically removed the SettleGraph installation during one retry, and the subsequent install failed; the earlier one-time profile launch is not a reliable storage fix. The existing Pixel requires additional free space or a user-selected factory reset. No AVD wipe or existing third-party app removal was performed. An unfinished profile-minification experiment was removed before committing. The README records the actual remaining storage limitation.
+
+### Mobile CI visual baseline repair
+
+The first GitHub run (40180107206) passed 25 tests and failed the screenshot test: all four macOS references differed on Ubuntu at text/icon edges. Diagnostic run 40180925131 retained actual rendered images and diffs. Reviewed those images, preserved all original macOS PNGs byte for byte under `goldens/macos/`, and added Linux references under `goldens/linux/`. The test selects its host references and retains exact pixel comparisons; no thresholds, skips, or automatic reference updates were introduced.
+
+Pinned CI to Ubuntu 24.04, upgraded checkout/setup-java/upload-artifact to Node 24 actions, and retained screenshot failure diagnostics plus coverage artifacts. Local `flutter analyze`, formatting, fixture sync, and `TZ=Africa/Addis_Ababa flutter test --coverage` passed (26 tests, one optional live test skipped).
+
+[GitHub run 40181307106](https://github.com/Almichot-1/Settlegraph_AI/actions/runs/40181307106), testing commit `a05937c81a00cf75619479f7c6b4c600586108b8` on Ubuntu 24.04 with Flutter 3.41.7, completed successfully: locked dependencies, fixture sync, formatting, analysis, 26 tests, Android debug APK build and artifact uploads all passed. The run has zero annotations. Coverage and the debug APK are attached to the run. Backend code and contracts were unchanged in this repair; backend tests were not rerun. Existing iOS and joint web/mobile acceptance limitations remain open.

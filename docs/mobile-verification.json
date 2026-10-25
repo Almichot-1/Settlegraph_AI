@@ -33,7 +33,18 @@
     "public_runtime_contracts": "PASS",
     "four_backend_scenarios_and_recovery": "PASS",
     "pack_validation": "PASS",
-    "github_actions": "NOT_RUN",
+    "github_actions": {
+      "status": "PASS",
+      "run_id": 40181307106,
+      "url": "https://github.com/Almichot-1/Settlegraph_AI/actions/runs/40181307106",
+      "tested_commit": "a05937c81a00cf75619479f7c6b4c600586108b8",
+      "runner": "ubuntu-24.04",
+      "flutter": "3.41.7",
+      "tests_passed": 26,
+      "opt_in_live_skipped": 1,
+      "android_debug_apk": "PASS (uploaded)",
+      "annotations": 0
+    },
     "nextjs_flutter_joint_smoke": "NOT_RUN",
     "aws": "NOT_RUN"
   }
