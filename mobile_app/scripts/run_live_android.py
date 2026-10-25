@@ -129,12 +129,14 @@ class Harness(BaseHTTPRequestHandler):
 server=ThreadingHTTPServer(('127.0.0.1',0),Harness);server.daemon_threads=True
 threading.Thread(target=server.serve_forever,daemon=True).start()
 try:
-    command=[flutter,'--no-version-check','test','integration_test/app_test.dart','-d',args.device,'--dart-define=LIVE_HARNESS=http://10.0.2.2:'+str(server.server_port)+'/'+nonce,'--dart-define=API_BASE_URL='+args.device_api_url,'--timeout','5m','--reporter','expanded']
+    command=[flutter,'--no-version-check','drive','--driver=test_driver/integration_test.dart','--target=integration_test/app_test.dart','--keep-app-running','--no-pub','-d',args.device,'--dart-define=LIVE_HARNESS=http://10.0.2.2:'+str(server.server_port)+'/'+nonce,'--dart-define=API_BASE_URL='+args.device_api_url]
     for phase in ['submit','retry']:
-        result=subprocess.run([*command,'--dart-define=RETRY_PHASE='+phase],cwd=root/'mobile_app',env=process_env)
+        result=subprocess.run([*command,'--dart-define=RETRY_PHASE='+phase],cwd=root/'mobile_app',env=process_env,timeout=900)
         if result.returncode:raise SystemExit(result.returncode)
         if phase=='submit':
             if not unconfirmed:raise SystemExit('Native UI did not retain an unconfirmed decision')
+            installed=subprocess.run(['adb','-s',args.device,'shell','pm','path','dev.settlegraph.settlegraph_mobile'],env=process_env,check=True,capture_output=True,text=True)
+            if not installed.stdout.startswith('package:'):raise SystemExit('The native test runner removed the app; process-restart persistence cannot be measured')
             subprocess.run(['adb','-s',args.device,'shell','am','force-stop','dev.settlegraph.settlegraph_mobile'],env=process_env,check=True)
             running=subprocess.run(['adb','-s',args.device,'shell','pidof','dev.settlegraph.settlegraph_mobile'],env=process_env,capture_output=True,text=True)
             if running.stdout.strip():raise SystemExit('Native app process did not stop')
@@ -152,3 +154,4 @@ try:
     print('PASS: native reviewer and product case/audit history agree')
 finally:
     stopping.set();server.shutdown();server.server_close()
+    subprocess.run(['adb','-s',args.device,'shell','am','force-stop','dev.settlegraph.settlegraph_mobile'],env=process_env,check=False,capture_output=True,timeout=15)
