@@ -48,10 +48,12 @@
       "status": "BLOCKED",
       "evidence": {
         "commit": null,
-        "tests": [],
+        "tests": [
+          "2026-10-25: Mobile canonical fixtures deserialize and render in Flutter tests; four inspected light/dark screen baselines. Next.js acknowledgment remains outstanding."
+        ],
         "runtime_verified": false
       },
-      "blocker": "Next.js and Flutter teams are developing separately; signed fixture acknowledgment must come from them."
+      "blocker": "Flutter fixture rendering is verified locally; Next.js rendering and client-owner contract acknowledgment remain outstanding."
     },
     {
       "id": "SG-003",
@@ -358,8 +360,10 @@
       "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "2026-10-25: TestMobileCaseFiltersAndInvestigationPagination passed on isolated PostgreSQL: assignee/status/scenario filters before pagination, cursor scope, foreign-tenant reads, investigation paging. Live Flutter repository read verified through test/live/product_flow_test.dart."
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -379,8 +383,11 @@
       "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "2026-10-25: Flutter lost-reply/same-key replay and 412 UI acknowledgement tests passed; opt-in live Flutter client test verified stale decision 412, later resolution, and preserved case events.",
+          "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json."
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -400,8 +407,10 @@
       "status": "IN_PROGRESS",
       "evidence": {
         "commit": null,
-        "tests": [],
-        "runtime_verified": false
+        "tests": [
+          "2026-10-25: Investigation paging regression passed on isolated PostgreSQL; real Flutter client checked OFFLINE_STUB evidence IDs against case evidence. Bedrock integration remains absent."
+        ],
+        "runtime_verified": true
       }
     },
     {
@@ -471,10 +480,13 @@
       "status": "BLOCKED",
       "evidence": {
         "commit": null,
-        "tests": [],
+        "tests": [
+          "2026-10-25: Flutter client implementation and live product-API review trace now exist; Next.js app and actual web/mobile smoke still required.",
+          "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json."
+        ],
         "runtime_verified": false
       },
-      "blocker": "Cross-client smoke requires the separately developed Next.js and Flutter applications."
+      "blocker": "Flutter implementation and live API verification exist; cross-client smoke still requires the separately developed Next.js app."
     },
     {
       "id": "SG-021",

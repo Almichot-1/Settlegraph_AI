@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Validate live demo JSON responses against the public OpenAPI schemas."""
 import json
+import os
 import urllib.request
 from pathlib import Path
 
 import yaml
 from jsonschema import Draft4Validator, FormatChecker
 
-BASE = 'http://127.0.0.1:8080'
+BASE = os.environ.get('SETTLEGRAPH_API_URL', 'http://127.0.0.1:8080')
 ENV = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if '=' in line)
 DOC = yaml.safe_load(Path('contracts/settlegraph-public.openapi.yaml').read_text())
 

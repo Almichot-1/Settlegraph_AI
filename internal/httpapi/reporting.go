@@ -158,7 +158,20 @@ func (a API) cases(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), caseSelect+` WHERE c.organization_id=$1 AND ($2='' OR c.id::text>$2) ORDER BY c.id LIMIT $3`, org, cursor, limit+1)
+	status := r.URL.Query().Get("status")
+	if status != "" && status != "OPEN" && status != "EVIDENCE_UPDATED" && status != "RESOLVED" {
+		writeError(w, 400, "BAD_REQUEST", "Invalid case status", reqID(r))
+		return
+	}
+	assigned := r.URL.Query().Get("assigned_to")
+	run := r.URL.Query().Get("scenario_run_id")
+	if (assigned != "" && !demoUUID.MatchString(assigned)) || (run != "" && !demoUUID.MatchString(run)) {
+		writeError(w, 400, "BAD_REQUEST", "Malformed case filter ID", reqID(r))
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), caseSelect+` WHERE c.organization_id=$1 AND ($2='' OR c.id::text>$2)
+ AND ($4='' OR c.status=$4) AND ($5='' OR c.assigned_to::text=$5)
+ AND ($6='' OR c.scenario_run_id::text=$6) ORDER BY c.id LIMIT $3`, org, cursor, limit+1, status, assigned, run)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Cases unavailable", reqID(r))
 		return
