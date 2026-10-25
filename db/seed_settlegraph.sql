@@ -10,4 +10,14 @@ INSERT INTO business_accounts(organization_id,id,provider_id,account_label,accou
  ('11111111-1111-4111-8111-111111111111','aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1','BANK_A','Synthetic customer at Bank A','CUSTOMER'),
  ('11111111-1111-4111-8111-111111111111','bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','BANK_B','Synthetic merchant at Bank B','MERCHANT')
  ON CONFLICT (organization_id,id) DO NOTHING;
+INSERT INTO app_users(id,auth_subject,display_name) VALUES
+ ('22222222-2222-4222-8222-222222222223','demo-reviewer','Demo Reviewer'),
+ ('22222222-2222-4222-8222-222222222224','demo-analyst','Demo Analyst'),
+ ('22222222-2222-4222-8222-222222222225','demo-viewer','Demo Viewer')
+ ON CONFLICT (id) DO NOTHING;
+INSERT INTO memberships(organization_id,user_id,role)
+ SELECT '11111111-1111-4111-8111-111111111111',id,
+ CASE auth_subject WHEN 'demo-reviewer' THEN 'REVIEWER' WHEN 'demo-analyst' THEN 'ANALYST' ELSE 'VIEWER' END
+ FROM app_users WHERE auth_subject IN ('demo-reviewer','demo-analyst','demo-viewer')
+ ON CONFLICT (organization_id,user_id) DO NOTHING;
 COMMIT;

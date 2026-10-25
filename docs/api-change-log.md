@@ -29,3 +29,10 @@ No silent renaming of enum members, money encoding, version headers, error shape
 ## 2026-10-25 — Mobile integration runtime corrections (nonbreaking)
 
 No OpenAPI or fixture shape changed. `listCases` now applies documented `assigned_to`, `status`, and `scenario_run_id` before keyset pagination; invalid filters return the existing 400 error envelope. `listInvestigations` now honors existing `limit`/`cursor` parameters with ID ordering. No order was promised in the contract; clients sort investigation history by `created_at` and ID for presentation. PostgreSQL-backed filter/pagination and tenant/cursor negative tests passed. Runtime test scripts now accept optional `SETTLEGRAPH_API_URL`, preserving the default localhost:8080.
+
+## 2026-10-25 — integrated client contract
+
+- Additive: `GET /v1/members` (`listMembers`, OWNER/ANALYST) returns active tenant member IDs, display names and roles with opaque pagination. Public contract now has 40 operations; regenerate both client fixtures/types after changes.
+- Demo login retains its JSON shape. Optional server-configured reviewer/analyst/viewer access codes select distinct seeded principals. Display-name input does not rename shared identities or grant a role. Existing owner code remains supported.
+- Permission correction: decisions require OWNER/REVIEWER, matching the handoff and Flutter. ANALYST retains assignment/investigation permissions.
+- Runtime corrections: transaction provider/scenario filters are applied before pagination; case-event/match/audit continuation is implemented; dashboard series enforces its required from/to range and half-open UTC buckets. Callers that previously omitted required dates must supply them.

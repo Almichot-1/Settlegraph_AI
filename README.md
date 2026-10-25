@@ -96,3 +96,7 @@ Read `PROJECT_MANAGER_DELIVERY_PLAYBOOK.md` **after** the architecture blueprint
 ## Autonomous execution (optional)
 
 See `AUTONOMOUS_SETUP.md` and use `autonomous_build.py` to run the SG tickets through build/review/test/commit without manually typing continue. This is an opt-in local controller. Full-access `--unrestricted` bypasses Codex security boundaries and is dangerous on personal machines.
+
+## Integrated web and mobile development
+
+The integration branch contains `settlegraph-web/` and `mobile_app/`. Use `make bootstrap && make local-up` to start the complete local web/API/simulator stack. See [local testing](docs/local-testing.md), [the integration plan](docs/full-stack-integration-plan.md), and [actual progress](docs/implementation-progress.md).

@@ -29,6 +29,7 @@ func (a API) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /v1/demo/sessions", a.session)
 	mux.HandleFunc("GET /v1/me", a.me)
+	mux.HandleFunc("GET /v1/members", a.members)
 	mux.HandleFunc("GET /v1/providers", a.providers)
 	mux.HandleFunc("GET /v1/accounts", a.accounts)
 	mux.HandleFunc("POST /v1/integrations/banksim/events", a.ingestEvent)
@@ -143,7 +144,16 @@ func (a API) session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	code := r.Header.Get("X-Demo-Access-Code")
-	if !hmac.Equal([]byte(code), []byte(a.Config.DemoAccessCode)) {
+	subject := ""
+	if a.Config.DemoAccessCode != "" && hmac.Equal([]byte(code), []byte(a.Config.DemoAccessCode)) {
+		subject = "demo-owner"
+	}
+	for principal, allowedCode := range a.Config.DemoRoleCodes {
+		if allowedCode != "" && hmac.Equal([]byte(code), []byte(allowedCode)) {
+			subject = principal
+		}
+	}
+	if subject == "" {
 		writeError(w, 401, "UNAUTHORIZED", "Invalid demo access code", reqID(r))
 		return
 	}
@@ -158,17 +168,15 @@ func (a API) session(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 400, "BAD_REQUEST", "display_name must contain 1 to 80 characters", reqID(r))
 		return
 	}
-	if _, err := a.DB.ExecContext(r.Context(), "UPDATE app_users SET display_name=$1 WHERE auth_subject='demo-owner'", body.DisplayName); err != nil {
-		writeError(w, 503, "SERVICE_UNAVAILABLE", "Demo identity unavailable", reqID(r))
-		return
-	}
-	profile, err := a.profile(r.Context(), "demo-owner")
+	// Demo principals are server-owned. A supplied name does not rename a
+	// shared identity or change its authorization.
+	profile, err := a.profile(r.Context(), subject)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Demo identity unavailable", reqID(r))
 		return
 	}
 	now := a.now()
-	token, expires := mintToken(a.Config.DemoJWTSecret, "demo-owner", now)
+	token, expires := mintToken(a.Config.DemoJWTSecret, subject, now)
 	writeJSON(w, 201, map[string]any{"access_token": token, "token_type": "Bearer", "expires_at": expires.UTC().Format(time.RFC3339), "user": profile, "default_organization_id": demoOrg})
 }
 

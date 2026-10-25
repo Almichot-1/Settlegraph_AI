@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: SettleGraph AI — Web + Mobile Public API
   version: 2.0.0-draft
-  description: Normative proposed client contract, not yet implemented. All financial amounts are decimal-string
+  description: Normative client contract. See docs/implementation-progress.md for supported operations. Financial amounts are decimal-string
     minor units. Simulated provider data is not authenticated real-world bank balance information.
 servers:
 - url: http://localhost:8080
@@ -65,7 +65,7 @@ paths:
       - Identity
       operationId: createDemoSession
       summary: Mint demo-only session token
-      description: Only enabled when APP_MODE=demo. Never expose demo minting in production.
+      description: Only enabled when APP_MODE=demo. Server-configured access codes select seeded demo principals; a display name never grants a role. Never expose demo minting in production.
       requestBody:
         required: true
         content:
@@ -106,6 +106,32 @@ paths:
           $ref: '#/components/responses/Unauthorized'
       x-implementation-priority: P0
       x-client: web-flutter
+  /v1/members:
+    get:
+      tags: [Identity]
+      operationId: listMembers
+      summary: Active organization members available for assignment (OWNER or ANALYST)
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Active members of this organization only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-implementation-priority: P0
+      x-client: web-primary
   /v1/providers:
     get:
       tags:
@@ -1253,6 +1279,31 @@ components:
       in: header
       name: X-BankSim-Signature
   schemas:
+    Member:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, ANALYST, REVIEWER, VIEWER]
+    MemberPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        next_cursor:
+          type: string
+          nullable: true
     Money:
       type: object
       required:

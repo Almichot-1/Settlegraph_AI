@@ -8,6 +8,7 @@ const esc = (v: string) => encodeURIComponent(v);
 export const api = {
   getLiveness: () => request<T.HealthStatus>('/health/live'),
   getReadiness: () => request<T.HealthStatus>('/health/ready'),
+  listMembers: (p:PageFilter={}) => request<T.MemberPage>('/v1/members'+qs(p)),
   getMe: () => request<T.UserProfile>('/v1/me'),
   listProviders: (p:PageFilter={}) => request<T.ProviderList>('/v1/providers'+qs(p)),
   listAccounts: (p:PageFilter={}) => request<T.AccountPage>('/v1/accounts'+qs(p)),

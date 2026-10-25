@@ -24,6 +24,7 @@ type Config struct {
 	DatabaseURL           string
 	AppMode               string
 	DemoAccessCode        string
+	DemoRoleCodes         map[string]string
 	DemoJWTSecret         string
 	BankSimAdminToken     string
 	BankSimProviderToken  string
@@ -75,6 +76,18 @@ func Load(role Role) (Config, error) {
 	}
 	if role == API && mode == "demo" {
 		cfg.DemoAccessCode = os.Getenv("DEMO_ACCESS_CODE")
+		cfg.DemoRoleCodes = map[string]string{}
+		seen := map[string]bool{cfg.DemoAccessCode: true}
+		for _, role := range []string{"reviewer", "analyst", "viewer"} {
+			code := os.Getenv("DEMO_" + strings.ToUpper(role) + "_ACCESS_CODE")
+			if code != "" {
+				if len(code) < 16 || seen[code] {
+					return Config{}, errors.New("demo role codes must be distinct and at least 16 characters")
+				}
+				seen[code] = true
+				cfg.DemoRoleCodes["demo-"+role] = code
+			}
+		}
 		cfg.DemoJWTSecret = os.Getenv("DEMO_JWT_SECRET")
 		cfg.BankSimAdminToken = os.Getenv("BANKSIM_ADMIN_TOKEN")
 		cfg.BankSimProviderToken = os.Getenv("BANKSIM_PROVIDER_TOKEN")

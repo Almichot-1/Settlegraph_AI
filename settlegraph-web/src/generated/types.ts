@@ -1,5 +1,16 @@
 /** GENERATED FROM ../../contracts/settlegraph-public.openapi.yaml. DO NOT EDIT BY HAND. */
 /** The authoritative schema is OpenAPI 3.0.3, version 2.0.0-draft. */
+export type Member = {
+  "id": string;
+  "display_name": string;
+  "role": "OWNER" | "ANALYST" | "REVIEWER" | "VIEWER";
+};
+
+export type MemberPage = {
+  "items": Array<Member>;
+  "next_cursor": (string) | null;
+};
+
 export type Money = {
   "minor_units": string;
   "currency": "ETB";

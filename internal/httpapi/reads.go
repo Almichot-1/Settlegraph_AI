@@ -156,7 +156,13 @@ func (a API) listObservations(w http.ResponseWriter, r *http.Request, recordType
 	if recordType == "transaction" {
 		operator = "<>"
 	}
-	rows, err := a.DB.QueryContext(r.Context(), "SELECT id FROM observations WHERE organization_id=$1 AND kind"+operator+"$2 AND ($3='' OR id::text>$3) ORDER BY id LIMIT $4", org, kindFilter, cursor, limit+1)
+	provider := r.URL.Query().Get("provider_id")
+	scenario := r.URL.Query().Get("scenario_run_id")
+	if scenario != "" && !demoUUID.MatchString(scenario) {
+		writeError(w, 400, "BAD_REQUEST", "Malformed scenario filter", reqID(r))
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), "SELECT id FROM observations WHERE organization_id=$1 AND kind"+operator+"$2 AND ($3='' OR id::text>$3) AND ($5='' OR provider_id=$5) AND ($6='' OR scenario_run_id::text=$6) ORDER BY id LIMIT $4", org, kindFilter, cursor, limit+1, provider, scenario)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Observations unavailable", reqID(r))
 		return
@@ -318,13 +324,18 @@ func (a API) listMatches(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "NOT_FOUND", "Run not found", reqID(r))
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,stage,order_id,payment_observation_id,settlement_observation_id,allocated_minor FROM match_edges WHERE organization_id=$1 AND run_id=$2 ORDER BY id`, org, runID)
+	limit, cursor, ok := a.limitCursor(w, r, org)
+	if !ok {
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,stage,order_id,payment_observation_id,settlement_observation_id,allocated_minor FROM match_edges WHERE organization_id=$1 AND run_id=$2 AND ($3='' OR id::text>$3) ORDER BY id LIMIT $4`, org, runID, cursor, limit+1)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Matches unavailable", reqID(r))
 		return
 	}
 	defer rows.Close()
 	items := []map[string]any{}
+	var next any
 	for rows.Next() {
 		var id, stage, payment string
 		var order, settlement sql.NullString
@@ -332,6 +343,10 @@ func (a API) listMatches(w http.ResponseWriter, r *http.Request) {
 		if rows.Scan(&id, &stage, &order, &payment, &settlement, &amount) != nil {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Matches unavailable", reqID(r))
 			return
+		}
+		if len(items) == limit {
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
+			break
 		}
 		left, right, rule := payment, settlement.String, "EXACT_PROVIDER_REFERENCE_AND_AMOUNT"
 		if stage == "ORDER_PAYMENT" {
@@ -343,7 +358,7 @@ func (a API) listMatches(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Matches unavailable", reqID(r))
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": nil})
+	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": next})
 }
 func (a API) proof(w http.ResponseWriter, r *http.Request) {
 	org, ok := a.tenant(w, r, "OWNER", "ANALYST", "REVIEWER", "VIEWER")
@@ -408,13 +423,18 @@ func (a API) auditEvents(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), "SELECT id,actor,action,resource_type,resource_id,occurred_at FROM audit_events WHERE organization_id=$1 ORDER BY occurred_at DESC,id DESC LIMIT 100", org)
+	limit, cursor, ok := a.limitCursor(w, r, org)
+	if !ok {
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), "SELECT id,actor,action,resource_type,resource_id,occurred_at FROM audit_events WHERE organization_id=$1 AND ($2='' OR (occurred_at,id)<(SELECT occurred_at,id FROM audit_events WHERE organization_id=$1 AND id=NULLIF($2,'')::uuid)) ORDER BY occurred_at DESC,id DESC LIMIT $3", org, cursor, limit+1)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Audit unavailable", reqID(r))
 		return
 	}
 	defer rows.Close()
 	items := []map[string]any{}
+	var next any
 	for rows.Next() {
 		var id, actor, action, resourceType, resourceID string
 		var at time.Time
@@ -422,11 +442,15 @@ func (a API) auditEvents(w http.ResponseWriter, r *http.Request) {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Audit unavailable", reqID(r))
 			return
 		}
+		if len(items) == limit {
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
+			break
+		}
 		items = append(items, map[string]any{"id": id, "actor": actor, "action": action, "resource_type": resourceType, "resource_id": resourceID, "occurred_at": at.UTC().Format(time.RFC3339)})
 	}
 	if rows.Err() != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Audit unavailable", reqID(r))
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": nil})
+	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": next})
 }

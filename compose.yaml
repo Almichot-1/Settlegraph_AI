@@ -41,6 +41,9 @@ services:
     environment:
       APP_MODE: demo
       DEMO_ACCESS_CODE: ${DEMO_ACCESS_CODE:?run make init-demo-env}
+      DEMO_REVIEWER_ACCESS_CODE: ${DEMO_REVIEWER_ACCESS_CODE:-}
+      DEMO_ANALYST_ACCESS_CODE: ${DEMO_ANALYST_ACCESS_CODE:-}
+      DEMO_VIEWER_ACCESS_CODE: ${DEMO_VIEWER_ACCESS_CODE:-}
       DEMO_JWT_SECRET: ${DEMO_JWT_SECRET:?run make init-demo-env}
       BANKSIM_ADMIN_TOKEN: ${BANKSIM_ADMIN_TOKEN:?run make init-demo-env}
       BANKSIM_PROVIDER_TOKEN: ${BANKSIM_PROVIDER_TOKEN:?run make init-demo-env}
@@ -48,7 +51,7 @@ services:
       BANKSIM_ADMIN_URL: http://banksim:8082
       PRODUCT_DATABASE_URL: postgres://settlegraph@product-db:5432/settlegraph?sslmode=disable
       LISTEN_ADDR: :8080
-    ports: ["127.0.0.1:8080:8080"]
+    ports: ["127.0.0.1:${API_PORT:-8080}:8080"]
     depends_on:
       product-db: {condition: service_healthy}
     networks: [product-db-net, provider-http-net]
@@ -88,7 +91,7 @@ services:
       BANKSIM_WEBHOOK_SECRET: ${BANKSIM_WEBHOOK_SECRET:?run make init-demo-env}
       PRODUCT_WEBHOOK_URL: http://api:8080/v1/integrations/banksim/events
       LISTEN_ADDR: :8082
-    ports: ["127.0.0.1:8082:8082"]
+    ports: ["127.0.0.1:${BANKSIM_PORT:-8082}:8082"]
     depends_on:
       banksim-db: {condition: service_healthy}
     networks: [banksim-db-net, provider-http-net]

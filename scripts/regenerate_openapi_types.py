@@ -6,6 +6,8 @@ Run from anywhere: python scripts/regenerate_openapi_types.py
 Keep the contract synchronized with the backend owner.
 """
 import json
+import hashlib
+import sys
 from pathlib import Path
 import yaml
 ROOT = Path(__file__).resolve().parent.parent
@@ -39,13 +41,20 @@ def expression(node):
         result = 'unknown'
     return f'({result}) | null' if node.get('nullable') else result
 
+def write(path, content):
+    if '--check' in sys.argv:
+        if not path.exists() or path.read_text() != content:
+            raise SystemExit('Generated contract drift: ' + str(path.relative_to(ROOT)))
+    else:
+        path.write_text(content)
+
 def main():
     spec = yaml.safe_load(SOURCE.read_text())
     declarations = ['/** GENERATED FROM ../../contracts/settlegraph-public.openapi.yaml. DO NOT EDIT BY HAND. */',
                     '/** The authoritative schema is OpenAPI 3.0.3, version 2.0.0-draft. */']
     for name, schema in spec['components']['schemas'].items():
         declarations.append(f'export type {name} = {expression(schema)};\n')
-    (OUTPUT / 'types.ts').write_text('\n'.join(declarations))
+    write(OUTPUT / 'types.ts', '\n'.join(declarations))
     operations = []
     for url, verbs in spec['paths'].items():
         for verb, op in verbs.items():
@@ -56,8 +65,9 @@ def main():
             request_type = op.get('requestBody', {}).get('content', {}).get('application/json', {}).get('schema', {}).get('$ref', '').split('/')[-1] or None
             operations.append(dict(operationId=op['operationId'], method=verb.upper(), path=url, successStatus=success_code,
                                    response=response_type, request=request_type, priority=op.get('x-implementation-priority')))
-    (OUTPUT / 'operation-manifest.ts').write_text('/** GENERATED — matches all 39 operations in the public API contract. */\nexport const operationManifest = '+json.dumps(operations, indent=2)+' as const;\n')
-    (ROOT / 'docs/OPERATION_MANIFEST.json').write_text(json.dumps(operations, indent=2)+'\n')
+    write(OUTPUT / 'operation-manifest.ts', '/** GENERATED — matches the public API contract. */\nexport const operationManifest = '+json.dumps(operations, indent=2)+' as const;\n')
+    write(ROOT / 'docs/OPERATION_MANIFEST.json', json.dumps(operations, indent=2)+'\n')
+    write(OUTPUT / 'contract-sha256.txt', hashlib.sha256(SOURCE.read_bytes()).hexdigest() + '\n')
     print(f'Generated {len(spec["components"]["schemas"])} TS schema aliases and {len(operations)} operations')
 
 if __name__ == '__main__': main()

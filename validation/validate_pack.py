@@ -90,7 +90,7 @@ def strip_nullable(obj):
   return out
  return obj
 converted={k:strip_nullable(v) for k,v in schemas.items()}
-for fixture,schema_name in [('case-open.json','Case'),('dashboard-summary.json','DashboardSummary'),('scenario-run.json','ScenarioRun'),('demo-session-response.json','DemoSessionResponse'),('case-evidence.json','EvidencePage')]:
+for fixture,schema_name in [('members.json','MemberPage'),('case-open.json','Case'),('dashboard-summary.json','DashboardSummary'),('scenario-run.json','ScenarioRun'),('demo-session-response.json','DemoSessionResponse'),('case-evidence.json','EvidencePage')]:
  sch={'$ref':f'#/definitions/{schema_name}','definitions':converted}
  obj=json.loads((F/fixture).read_text())
  issues=list(Draft4Validator(sch,format_checker=FormatChecker()).iter_errors(obj))

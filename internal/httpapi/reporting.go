@@ -332,13 +332,18 @@ func (a API) caseEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "NOT_FOUND", "Case not found", reqID(r))
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,action,actor,message,version,occurred_at FROM case_events WHERE organization_id=$1 AND case_id=$2 ORDER BY version`, org, id)
+	limit, cursor, ok := a.limitCursor(w, r, org)
+	if !ok {
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,action,actor,message,version,occurred_at FROM case_events WHERE organization_id=$1 AND case_id=$2 AND ($3='' OR (version,id)>(SELECT version,id FROM case_events WHERE organization_id=$1 AND case_id=$2 AND id=NULLIF($3,'')::uuid)) ORDER BY version,id LIMIT $4`, org, id, cursor, limit+1)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case events unavailable", reqID(r))
 		return
 	}
 	defer rows.Close()
 	items := []map[string]any{}
+	var next any
 	for rows.Next() {
 		var eventID, action, actor, message string
 		var version int
@@ -346,6 +351,10 @@ func (a API) caseEvents(w http.ResponseWriter, r *http.Request) {
 		if rows.Scan(&eventID, &action, &actor, &message, &version, &at) != nil {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Case events unavailable", reqID(r))
 			return
+		}
+		if len(items) == limit {
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
+			break
 		}
 		if action == "EVIDENCE_UPDATED" {
 			action = "EVIDENCE_ADDED"
@@ -356,5 +365,5 @@ func (a API) caseEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case events unavailable", reqID(r))
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": nil})
+	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": next})
 }

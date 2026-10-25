@@ -1,4 +1,4 @@
-/** GENERATED — matches all 39 operations in the public API contract. */
+/** GENERATED — matches the public API contract. */
 export const operationManifest = [
   {
     "operationId": "getLiveness",
@@ -33,6 +33,15 @@ export const operationManifest = [
     "path": "/v1/me",
     "successStatus": 200,
     "response": "UserProfile",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listMembers",
+    "method": "GET",
+    "path": "/v1/members",
+    "successStatus": 200,
+    "response": "MemberPage",
     "request": null,
     "priority": "P0"
   },
