@@ -67,7 +67,7 @@ make test-contract-runtime
 
 `make up` generates an ignored `.env` containing local synthetic service tokens, then starts the API on `127.0.0.1:8080`, BankSim on `127.0.0.1:8082`, a worker and two separate PostgreSQL databases. Migrations and seeds can be rerun. `make down` stops the stack and retains volumes. The API provides demo login, scenario orchestration, signed event ingestion, two-stage reconciliation, read APIs, case review and a durable evidence-linked investigator with offline default and optional Bedrock adapter. The end-to-end script replays all four scenarios.
 
-The local databases use trust authentication only on unexposed Compose networks. Production API startup is intentionally disabled until a production identity provider is configured. AWS deployment, actual Bedrock account access, final cross-client acceptance and the optional S3 import flow remain open; see `docs/implementation-progress.md` and `AGENT_BACKLOG.json`. `GET /v1/accounts` returns the known synthetic account metadata without a balance until a provider observation supplies one. Import list/detail reads use the product database; create/upload/complete and parsing remain deferred.
+The local databases use trust authentication only on unexposed Compose networks. Production API startup is intentionally disabled until a production identity provider is configured. The local cross-client workflow is verified; AWS deployment, actual Bedrock account access and the optional S3 import flow remain open; see `docs/implementation-progress.md` and `AGENT_BACKLOG.json`. `GET /v1/accounts` returns the known synthetic account metadata without a balance until a provider observation supplies one. Import list/detail reads use the product database; create/upload/complete and parsing remain deferred.
 
 `validation/build_contracts.py` and `validation/generate_fixtures.py` regenerate contract assets; do not run them after client freeze without reviewing the changes. `validation/validate_pack.py` checks contracts and fixtures, while Go and end-to-end commands check runtime behavior.
 
@@ -101,3 +101,5 @@ See `AUTONOMOUS_SETUP.md` and use `autonomous_build.py` to run the SG tickets th
 ## Integrated web and mobile development
 
 The integration branch contains `settlegraph-web/` and `mobile_app/`. Use `make bootstrap && make local-up` to start the complete local web/API/simulator stack. See [local testing](docs/local-testing.md), [the integration plan](docs/full-stack-integration-plan.md), and [actual progress](docs/implementation-progress.md).
+
+Local full-stack acceptance: [credential-free verification record](docs/integration-verification.json). Two fresh browser-owner/Android-reviewer runs passed, including process-restart retry, one decision/audit and unchanged financial source records. Current CI and review: [integration PR #1](https://github.com/Almichot-1/Settlegraph_AI/pull/1).

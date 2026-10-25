@@ -1,0 +1,76 @@
+{
+  "scope": "Local synthetic full-stack integration",
+  "completed_at": "2026-10-25T19:43:11.299168+00:00",
+  "tested_commit": "7c85e2edc576e0f5e019943a0d81373bdd5e52db",
+  "working_tree_dirty": false,
+  "rehearsals": [
+    {
+      "scenario_run_id": "4e67a5a7-a4d2-4600-898b-045e94e55b18",
+      "case_id": "8abd87b4-74fe-451b-8a8c-bb2c13d1226c",
+      "web_user_id": "22222222-2222-4222-8222-222222222222",
+      "mobile_user_id": "22222222-2222-4222-8222-222222222223",
+      "actor": "demo-reviewer",
+      "final_status": "RESOLVED",
+      "final_version": 5,
+      "event_count": 5,
+      "completed_at": "2026-10-25T19:40:34Z",
+      "process_restart_verified": true,
+      "resolution_audit_count": 1,
+      "financial_sources_unchanged": true,
+      "financial_source_hash": "c73774e5eb8e6fd06728dcf088142db058674eca3cf74e9f5d4f6aa483eae459",
+      "evidence_snapshot_hash": "3933714f8a7936a86465958304ec7948454f8c61878703e3d312ff9fe5978e42",
+      "web_verified_version": 5,
+      "settlement_released_by": "web-browser",
+      "rehearsal": 1,
+      "decision_response_statuses": [
+        412,
+        200,
+        200
+      ]
+    },
+    {
+      "scenario_run_id": "bdb2a3f3-1265-4f44-a96e-83e7840736ba",
+      "case_id": "9fb38625-e122-4e70-b960-1c16c363bee8",
+      "web_user_id": "22222222-2222-4222-8222-222222222222",
+      "mobile_user_id": "22222222-2222-4222-8222-222222222223",
+      "actor": "demo-reviewer",
+      "final_status": "RESOLVED",
+      "final_version": 5,
+      "event_count": 5,
+      "completed_at": "2026-10-25T19:43:01Z",
+      "process_restart_verified": true,
+      "resolution_audit_count": 1,
+      "financial_sources_unchanged": true,
+      "financial_source_hash": "cd9ef89e6d93642efd998f7c4e933358eb5945b43ce49977c8933f0774e29b71",
+      "evidence_snapshot_hash": "b5b0f2f2586132b686774ebd7cf9b0f0f8f4404f3808a08149934111487fb966",
+      "web_verified_version": 5,
+      "settlement_released_by": "web-browser",
+      "rehearsal": 2,
+      "decision_response_statuses": [
+        412,
+        200,
+        200
+      ]
+    }
+  ],
+  "checks": {
+    "go_unit_vet_and_isolated_postgresql": "PASS",
+    "public_contracts_and_four_scenarios_delivery_recovery": "PASS",
+    "web_types_unit_build_and_real_browser": "PASS",
+    "flutter_analysis": "PASS",
+    "flutter_unit_widget_golden": {
+      "passed": 28,
+      "optional_live_skipped": 1
+    },
+    "flutter_host_live_api": "PASS",
+    "android_x64_demo_apk": "PASS",
+    "browser_to_native_fresh_rehearsals": 2
+  },
+  "latest_ci": "https://github.com/Almichot-1/Settlegraph_AI/pull/1/checks",
+  "external_gates": [
+    "AWS deployment and actual Bedrock account invocation",
+    "Native iOS on a compatible macOS/Xcode host",
+    "Human client-owner contract acknowledgement",
+    "Optional CSV/S3 import upload and parser"
+  ]
+}

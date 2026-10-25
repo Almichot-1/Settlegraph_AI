@@ -1,7 +1,7 @@
 {
   "project": "SettleGraph AI",
   "version": "2.1",
-  "status": "BACKEND_IMPLEMENTATION_IN_PROGRESS",
+  "status": "LOCAL_FULL_STACK_TESTED_EXTERNAL_GATES_DEFERRED",
   "actual_tests_executed": true,
   "contract": "contracts/settlegraph-public.openapi.yaml",
   "tickets": [
@@ -486,16 +486,17 @@
       "acceptance": [
         "One video/log trace with shared case ID, user ID, timestamps, response codes and no synthetic-vs-real ambiguity."
       ],
-      "status": "IN_PROGRESS",
+      "status": "TESTED",
       "evidence": {
         "commit": null,
         "tests": [
           "2026-10-25: Flutter client implementation and live product-API review trace now exist; Next.js app and actual web/mobile smoke still required.",
           "2026-10-25: Native Android sample and live API review passed via mobile_app/scripts/run_live_android.py; independent API history confirmed RESOLVED case 8c927e02-674b-4dd2-9e38-aca38dfa0715 version 5. Trace: docs/mobile-verification.json.",
           "2026-10-25 integration checkpoint: Next.js now exists in the integration checkout and real browser flow passes. Coordinated browser/native harness implemented; native SDK download and execution pending.",
-          "2026-10-25: pinned Linux Flutter analysis and 27 unit/widget/golden tests PASS; native emulator booted, coordinated device acceptance still pending."
+          "2026-10-25: pinned Linux Flutter analysis and 27 unit/widget/golden tests PASS; native emulator booted, coordinated device acceptance still pending.",
+          "2026-10-25: two fresh browser-owner/native-reviewer rehearsals PASS; process-stop restore and exact 412/200/200 decision attempts, one resolution/audit, unchanged source observations. See docs/integration-verification.json."
         ],
-        "runtime_verified": false
+        "runtime_verified": true
       }
     },
     {
@@ -540,11 +541,13 @@
       "evidence": {
         "commit": null,
         "tests": [
-          "2026-10-25 integration checkpoint: Backend scenarios, delivery recovery and real browser rehearsal PASS. Two fresh coordinated browser/native runs and final CI still pending; AWS remains deferred."
+          "2026-10-25 integration checkpoint: Backend scenarios, delivery recovery and real browser rehearsal PASS. Two fresh coordinated browser/native runs and final CI still pending; AWS remains deferred.",
+          "2026-10-25: local rehearsal portion PASS twice on isolated fresh databases; docs/integration-verification.json. No AWS acceptance claimed."
         ],
-        "runtime_verified": false
+        "runtime_verified": false,
+        "local_rehearsal_verified": true
       },
-      "blocker": "Final acceptance requires cross-client smoke and the deferred AWS gate."
+      "blocker": "Two fresh local full-stack rehearsals passed; overall acceptance still includes the user-deferred AWS gate and project-owner release acceptance."
     }
   ]
 }

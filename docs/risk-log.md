@@ -55,3 +55,7 @@ This entry supersedes the planning assessments above for the tested local scope.
 | R-17 / R-18 / R-24 / R-26 | Secure bounded mobile retry storage, coordinated browser/native tests, isolated SDK setup and full CI are implemented; native/CI execution pending | IN_PROGRESS |
 
 AWS/real-bank credentials and deployment remain absent by design for this local task. Linux does not establish native iOS acceptance. SG-002 written client-owner acknowledgement remains a human acceptance item; automated contract tests do not impersonate a DRI.
+
+## Local acceptance closure
+
+R-17 and R-18 are MITIGATED_LOCAL: two fresh browser/Android runs passed actual form sign-in, secure session and pending-decision restoration after process termination, exact retry and shared final history. R-26 is MITIGATED_LOCAL: the pinned Linux SDK, all JNI prerequisites, emulator and demo APK build are verified. R-24 now has full backend/web/mobile CI plus a real coordinated test; the first CI emulator boot exposed missing KVM access, which is repaired in the workflow. Check PR #1 for the delivered revision's CI status. R-02 (actual Bedrock access), R-16 (native iOS), optional import upload/parsing and human contract sign-off remain outside the verified local scope.

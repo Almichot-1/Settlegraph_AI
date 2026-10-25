@@ -34,7 +34,7 @@ Mobile setup and native acceptance are tracked in the integration progress repor
 
 ## Android toolchain and review
 
-The mobile project pins Flutter 3.41.7 (Dart 3.11.5), Java 21, Android platforms/build-tools 35 and 36, NDK 28.2, CMake 3.22.1 and an API 35 x86_64 emulator. On Linux x86_64 the project installer uses official archives, verified published checksums and an isolated `.tools/` directory. Downloads resume after interruption. It requires Docker for the pinned JDK image and explicit acceptance of Google's SDK licence:
+The mobile project pins Flutter 3.41.7 (Dart 3.11.5), Java 21, Android platforms/build-tools 35 and 36, NDK 28.2, CMake 3.22.1 and an API 35 x86_64 emulator. On Linux x86_64, with Python 3.12 or newer, the project installer uses official archives, verified published checksums and an isolated `.tools/` directory. Downloads resume after interruption. It requires Docker for the pinned JDK image and explicit acceptance of Google's SDK licence:
 
 ```sh
 python3 scripts/setup_mobile.py --accept-android-license
