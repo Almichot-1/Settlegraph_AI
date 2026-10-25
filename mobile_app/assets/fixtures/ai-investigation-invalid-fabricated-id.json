@@ -1,0 +1,18 @@
+{
+  "summary": "The transfer definitely settled.",
+  "hypotheses": [
+    {
+      "explanation": "I invented a bank entry.",
+      "evidence_ids": [
+        "99999999-9999-4999-8999-999999999999"
+      ]
+    }
+  ],
+  "recommended_actions": [
+    "Mark paid now."
+  ],
+  "evidence_ids": [
+    "99999999-9999-4999-8999-999999999999"
+  ],
+  "limitations": []
+}

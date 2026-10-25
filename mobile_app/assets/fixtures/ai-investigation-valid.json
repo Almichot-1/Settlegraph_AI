@@ -1,0 +1,22 @@
+{
+  "summary": "The payment is accepted by simulated provider A, but no related settlement is observed in provider B through the reported source watermark.",
+  "hypotheses": [
+    {
+      "explanation": "Settlement posting may have been delayed in this seeded scenario.",
+      "evidence_ids": [
+        "55555555-5555-4555-8555-555555555555",
+        "66666666-6666-4666-8666-666666666666"
+      ]
+    }
+  ],
+  "recommended_actions": [
+    "Request settlement confirmation using transfer reference SIM-TRF-1045."
+  ],
+  "evidence_ids": [
+    "55555555-5555-4555-8555-555555555555",
+    "66666666-6666-4666-8666-666666666666"
+  ],
+  "limitations": [
+    "Provider observations describe a synthetic test environment, not actual bank custody."
+  ]
+}

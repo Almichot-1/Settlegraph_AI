@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-10-24T11:00:00Z",
+  "orders_expected": {
+    "minor_units": "250000",
+    "currency": "ETB"
+  },
+  "payments_accepted": {
+    "minor_units": "250000",
+    "currency": "ETB"
+  },
+  "settlements_observed": {
+    "minor_units": "0",
+    "currency": "ETB"
+  },
+  "unmatched_payments": {
+    "minor_units": "250000",
+    "currency": "ETB"
+  },
+  "open_cases": 1,
+  "providers": [
+    {
+      "id": "BANK_A",
+      "name": "Simulated Bank A",
+      "kind": "BANK",
+      "sync_status": "HEALTHY",
+      "last_observed_at": "2026-10-24T11:00:00Z"
+    },
+    {
+      "id": "BANK_B",
+      "name": "Simulated Bank B",
+      "kind": "BANK",
+      "sync_status": "HEALTHY",
+      "last_observed_at": "2026-10-24T11:00:00Z"
+    }
+  ],
+  "coverage": {
+    "source_status": "COMPLETE",
+    "is_complete": true
+  }
+}
