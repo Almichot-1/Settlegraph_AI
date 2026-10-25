@@ -81,7 +81,12 @@ jobs:
       - run: flutter pub get --enforce-lockfile
         working-directory: mobile_app
       - run: python3 mobile_app/scripts/sync_fixtures.py --check
-      - run: flutter analyze && flutter test --coverage && flutter build apk --debug
+      - run: |
+          flutter analyze
+          flutter test --coverage
+          flutter build apk --debug --dart-define=APP_ENV=demo --dart-define=API_BASE_URL=http://10.0.2.2:8080
+          mkdir -p ../verification/apk
+          cp build/app/outputs/flutter-apk/app-debug.apk ../verification/apk/settlegraph-demo-debug.apk
         working-directory: mobile_app
       - run: npx playwright install --with-deps chromium
         working-directory: settlegraph-web
@@ -100,11 +105,13 @@ jobs:
         if: always()
         with:
           name: cross-client-proof
-          path: verification/
+          path: |
+            verification/acceptance-*/
+            verification/latest-acceptance.json
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v6
         with:
           name: integrated-android-debug
-          path: mobile_app/build/app/outputs/flutter-apk/app-debug.apk
+          path: verification/apk/settlegraph-demo-debug.apk
           retention-days: 14

@@ -64,3 +64,11 @@ make test-cross-client
 This creates two consecutive fresh test deployments with random loopback ports, separate product/BankSim databases and `settlegraph-test-*` project names. A browser owner starts/assigns/investigates a case; Android reviews that exact case while the browser releases the late settlement. Only volumes belonging to those newly created test projects are removed. The normal local demo and its records remain intact. Screenshots, logs and credential-free case/version/actor traces are stored under ignored `verification/`; `verification/latest-acceptance.json` records the tested Git commit and whether the working tree had changes. A passing run is evidence only after the command actually completes.
 
 The offline investigation provider is the local default. See [Bedrock configuration and its external acceptance gate](bedrock.md) for the optional adapter. Production identity, live AWS deployment and real financial providers remain separate work.
+
+To build an app that connects to the normal host demo from an Android emulator (rather than the labelled fixture workspace), use:
+
+```sh
+python3 scripts/mobile.py build apk --debug --dart-define=APP_ENV=demo --dart-define=API_BASE_URL=http://10.0.2.2:8080
+```
+
+Enter the reviewer access code from the ignored root `.env` on the device's sign-in screen. A physical device needs a reachable API URL instead of `10.0.2.2`. No access code belongs in build defines. The integration workflow preserves this runnable demo APK separately before compiling its test-only harness, so uploaded app artifacts do not contain an expired local test endpoint.

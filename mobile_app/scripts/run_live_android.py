@@ -7,6 +7,7 @@ response codes and versions only. No access code is compiled into the app.
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import argparse
+import hashlib
 import json
 import secrets
 import subprocess
@@ -14,6 +15,7 @@ import sys
 import threading
 import time
 import urllib.request
+import urllib.parse
 import uuid
 
 root=Path(__file__).resolve().parents[2]
@@ -32,6 +34,7 @@ settings=dict(line.split('=',1) for line in (root/'.env').read_text().splitlines
 trace=[]
 decision_attempts=[]
 unconfirmed=False
+financial_before=None
 args.artifacts.mkdir(parents=True,exist_ok=True)
 def request(path,body=None,headers=None):
     req=urllib.request.Request(args.api_url+path,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json',**(headers or {})})
@@ -42,6 +45,18 @@ def login(code):return request('/v1/demo/sessions',{'display_name':'Integration 
 owner=login(settings['DEMO_ACCESS_CODE']);session=login(settings['DEMO_REVIEWER_ACCESS_CODE'])
 if session['user']['id']==owner['user']['id']:raise SystemExit('Native review requires a distinct reviewer identity')
 headers={'Authorization':'Bearer '+owner['access_token'],'X-Organization-Id':owner['default_organization_id']}
+def records(path):
+    items=[];cursor=None;seen=set()
+    for _ in range(100):
+        page=request(path+('&' if '?' in path else '?')+urllib.parse.urlencode({'limit':100,**({'cursor':cursor} if cursor else {})}),headers=headers)
+        items.extend(page['items']);cursor=page['next_cursor']
+        if not cursor:return items
+        if cursor in seen:raise RuntimeError('Repeated API cursor')
+        seen.add(cursor)
+    raise RuntimeError('API history exceeded its test bound')
+def financial_snapshot():
+    return {'transactions':records('/v1/transactions?scenario_run_id='+run['id']),
+            'settlements':[item for item in records('/v1/settlements') if item.get('scenario_run_id')==run['id']]}
 def post(path,body,version=None):
     return request(path,body,{**headers,'Idempotency-Key':str(uuid.uuid4()),**({'If-Match':'"'+str(version)+'"'} if version is not None else {})})
 if args.handoff:
@@ -82,7 +97,7 @@ class Harness(BaseHTTPRequestHandler):
         decision_attempts.append(attempt)
         self.send_response(200);self.send_header('Content-Length','2');self.end_headers();self.wfile.write(b'{}')
     def do_GET(self):
-        global unconfirmed
+        global unconfirmed,financial_before
         if self.path=='/'+nonce+'/session':
             body={'session':session,'case':case,'scenario_run_id':run['id']}
         elif self.path=='/'+nonce+'/settlement':
@@ -96,6 +111,11 @@ class Harness(BaseHTTPRequestHandler):
                             if stopping.is_set() or time.monotonic()>deadline:self.send_error(503,'Browser did not release settlement');return
                             time.sleep(.1)
                     else:post('/v1/demo/scenario-runs/'+run['id']+'/advance',{'expected_step':2})
+                    deadline=time.monotonic()+30
+                    while request('/v1/cases/'+case['id'],headers=headers)['status']!='EVIDENCE_UPDATED':
+                        if time.monotonic()>deadline:self.send_error(503,'Late evidence was not observed');return
+                        time.sleep(.25)
+                    financial_before=financial_snapshot()
                     Harness.released=True
             body={'released':True}
         elif self.path in ['/'+nonce+'/completed','/'+nonce+'/unconfirmed']:
@@ -123,8 +143,11 @@ try:
     events=request('/v1/cases/'+case['id']+'/events?limit=100',headers=headers)
     resolutions=[e for e in events['items'] if e['type']=='RESOLVED']
     if final['status']!='RESOLVED' or len(resolutions)!=1 or resolutions[0]['actor']!='demo-reviewer':raise SystemExit('Native reviewer decision did not match product history')
+    audit=[entry for entry in records('/v1/audit-events') if entry['resource_type']=='CASE' and entry['resource_id']==case['id'] and entry['action']=='RESOLVED']
+    if len(audit)!=1 or audit[0]['actor']!='demo-reviewer':raise SystemExit('Native retry duplicated or misattributed the decision audit')
+    if financial_before is None or financial_snapshot()!=financial_before:raise SystemExit('Human review changed financial source observations')
     if [item['status'] for item in decision_attempts]!=[412,200,200] or decision_attempts[1]!=decision_attempts[2]:raise SystemExit('Native retry did not preserve the exact body, key and version after process termination')
-    artifact={'scenario_run_id':run['id'],'case_id':case['id'],'web_user_id':owner['user']['id'],'mobile_user_id':session['user']['id'],'actor':resolutions[0]['actor'],'final_status':final['status'],'final_version':final['version'],'event_count':len(events['items']),'completed_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'responses':trace,'decision_attempts':decision_attempts,'process_restart_verified':True}
+    artifact={'scenario_run_id':run['id'],'case_id':case['id'],'web_user_id':owner['user']['id'],'mobile_user_id':session['user']['id'],'actor':resolutions[0]['actor'],'final_status':final['status'],'final_version':final['version'],'event_count':len(events['items']),'completed_at':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'responses':trace,'decision_attempts':decision_attempts,'process_restart_verified':True,'resolution_audit_count':len(audit),'financial_sources_unchanged':True,'financial_source_hash':hashlib.sha256(json.dumps(financial_before,sort_keys=True).encode()).hexdigest()}
     (args.artifacts/'trace.json').write_text(json.dumps(artifact,indent=2))
     print('PASS: native reviewer and product case/audit history agree')
 finally:
