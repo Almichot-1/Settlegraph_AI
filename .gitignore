@@ -26,3 +26,11 @@ coverage.html
 
 # Isolated Python tooling
 .venv/
+
+# Frontend tooling, dependencies, and build outputs
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+settlegraph-web/.env.local
+settlegraph-web/.env.*.local

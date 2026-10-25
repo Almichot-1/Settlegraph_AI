@@ -1,4 +1,4 @@
-.PHONY: build lint test test-integration test-e2e test-contract-runtime contract-check migrate seed up down smoke init-demo-env
+.PHONY: build lint test test-integration test-e2e test-contract-runtime contract-check migrate seed up down smoke init-demo-env frontend-install frontend-dev frontend-test frontend-check frontend-build
 
 init-demo-env:
 	python validation/init_demo_env.py
@@ -48,3 +48,19 @@ smoke:
 	docker compose exec -T worker wget -q -O /dev/null http://127.0.0.1:8081/health/ready
 	curl --fail --silent http://127.0.0.1:8082/health/live
 	curl --fail --silent http://127.0.0.1:8082/health/ready
+
+
+frontend-install:
+	cd settlegraph-web && npm install
+
+frontend-dev:
+	cd settlegraph-web && npm run dev
+
+frontend-test:
+	cd settlegraph-web && npm test
+
+frontend-check:
+	cd settlegraph-web && npm run check:contracts && npm run typecheck
+
+frontend-build:
+	cd settlegraph-web && npm run build
