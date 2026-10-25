@@ -1,0 +1,363 @@
+/** GENERATED — matches the public API contract. */
+export const operationManifest = [
+  {
+    "operationId": "getLiveness",
+    "method": "GET",
+    "path": "/health/live",
+    "successStatus": 200,
+    "response": "HealthStatus",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getReadiness",
+    "method": "GET",
+    "path": "/health/ready",
+    "successStatus": 200,
+    "response": "HealthStatus",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "createDemoSession",
+    "method": "POST",
+    "path": "/v1/demo/sessions",
+    "successStatus": 201,
+    "response": "DemoSessionResponse",
+    "request": "DemoSessionRequest",
+    "priority": "P0"
+  },
+  {
+    "operationId": "getMe",
+    "method": "GET",
+    "path": "/v1/me",
+    "successStatus": 200,
+    "response": "UserProfile",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listMembers",
+    "method": "GET",
+    "path": "/v1/members",
+    "successStatus": 200,
+    "response": "MemberPage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listProviders",
+    "method": "GET",
+    "path": "/v1/providers",
+    "successStatus": 200,
+    "response": "ProviderList",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listAccounts",
+    "method": "GET",
+    "path": "/v1/accounts",
+    "successStatus": 200,
+    "response": "AccountPage",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "getDashboardSummary",
+    "method": "GET",
+    "path": "/v1/dashboard/summary",
+    "successStatus": 200,
+    "response": "DashboardSummary",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getDashboardSeries",
+    "method": "GET",
+    "path": "/v1/dashboard/series",
+    "successStatus": 200,
+    "response": "DashboardSeries",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "listOrders",
+    "method": "GET",
+    "path": "/v1/orders",
+    "successStatus": 200,
+    "response": "OrderPage",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "getOrder",
+    "method": "GET",
+    "path": "/v1/orders/{id}",
+    "successStatus": 200,
+    "response": "Order",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "listTransactions",
+    "method": "GET",
+    "path": "/v1/transactions",
+    "successStatus": 200,
+    "response": "TransactionPage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getTransaction",
+    "method": "GET",
+    "path": "/v1/transactions/{id}",
+    "successStatus": 200,
+    "response": "Transaction",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listSettlements",
+    "method": "GET",
+    "path": "/v1/settlements",
+    "successStatus": 200,
+    "response": "SettlementPage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getSettlement",
+    "method": "GET",
+    "path": "/v1/settlements/{id}",
+    "successStatus": 200,
+    "response": "Settlement",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "listReconciliationRuns",
+    "method": "GET",
+    "path": "/v1/reconciliation/runs",
+    "successStatus": 200,
+    "response": "RunPage",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "createReconciliationRun",
+    "method": "POST",
+    "path": "/v1/reconciliation/runs",
+    "successStatus": 202,
+    "response": "ReconciliationRun",
+    "request": "CreateRunRequest",
+    "priority": "P0"
+  },
+  {
+    "operationId": "getReconciliationRun",
+    "method": "GET",
+    "path": "/v1/reconciliation/runs/{runId}",
+    "successStatus": 200,
+    "response": "ReconciliationRun",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listRunMatches",
+    "method": "GET",
+    "path": "/v1/reconciliation/runs/{runId}/matches",
+    "successStatus": 200,
+    "response": "MatchPage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getMatchProof",
+    "method": "GET",
+    "path": "/v1/reconciliation/proofs/{id}",
+    "successStatus": 200,
+    "response": "MatchProof",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "listCases",
+    "method": "GET",
+    "path": "/v1/cases",
+    "successStatus": 200,
+    "response": "CasePage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getCase",
+    "method": "GET",
+    "path": "/v1/cases/{caseId}",
+    "successStatus": 200,
+    "response": "Case",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listCaseEvidence",
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/evidence",
+    "successStatus": 200,
+    "response": "EvidencePage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "listCaseEvents",
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/events",
+    "successStatus": 200,
+    "response": "CaseEventPage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "assignCase",
+    "method": "POST",
+    "path": "/v1/cases/{caseId}/assign",
+    "successStatus": 200,
+    "response": "Case",
+    "request": "AssignCaseRequest",
+    "priority": "P1"
+  },
+  {
+    "operationId": "recordCaseDecision",
+    "method": "POST",
+    "path": "/v1/cases/{caseId}/decisions",
+    "successStatus": 200,
+    "response": "Case",
+    "request": "ReviewDecisionRequest",
+    "priority": "P0"
+  },
+  {
+    "operationId": "createInvestigation",
+    "method": "POST",
+    "path": "/v1/cases/{caseId}/investigations",
+    "successStatus": 202,
+    "response": "Investigation",
+    "request": "InvestigationRequest",
+    "priority": "P0"
+  },
+  {
+    "operationId": "listInvestigations",
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/investigations",
+    "successStatus": 200,
+    "response": "InvestigationPage",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "getInvestigation",
+    "method": "GET",
+    "path": "/v1/cases/{caseId}/investigations/{investigationId}",
+    "successStatus": 200,
+    "response": "Investigation",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "getJob",
+    "method": "GET",
+    "path": "/v1/jobs/{id}",
+    "successStatus": 200,
+    "response": "Job",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "listAuditEvents",
+    "method": "GET",
+    "path": "/v1/audit-events",
+    "successStatus": 200,
+    "response": "AuditEventPage",
+    "request": null,
+    "priority": "P1"
+  },
+  {
+    "operationId": "listDemoScenarios",
+    "method": "GET",
+    "path": "/v1/demo/scenarios",
+    "successStatus": 200,
+    "response": "ScenarioList",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "createScenarioRun",
+    "method": "POST",
+    "path": "/v1/demo/scenarios/{scenarioKey}/runs",
+    "successStatus": 201,
+    "response": "ScenarioRun",
+    "request": "StartScenarioRequest",
+    "priority": "P0"
+  },
+  {
+    "operationId": "getScenarioRun",
+    "method": "GET",
+    "path": "/v1/demo/scenario-runs/{scenarioRunId}",
+    "successStatus": 200,
+    "response": "ScenarioRun",
+    "request": null,
+    "priority": "P0"
+  },
+  {
+    "operationId": "advanceScenarioRun",
+    "method": "POST",
+    "path": "/v1/demo/scenario-runs/{scenarioRunId}/advance",
+    "successStatus": 200,
+    "response": "ScenarioRun",
+    "request": "AdvanceScenarioRequest",
+    "priority": "P0"
+  },
+  {
+    "operationId": "acceptBankSimEvent",
+    "method": "POST",
+    "path": "/v1/integrations/banksim/events",
+    "successStatus": 202,
+    "response": "WebhookAccepted",
+    "request": "BankEvent",
+    "priority": "P0"
+  },
+  {
+    "operationId": "listImports",
+    "method": "GET",
+    "path": "/v1/imports",
+    "successStatus": 200,
+    "response": "ImportPage",
+    "request": null,
+    "priority": "P2"
+  },
+  {
+    "operationId": "createImport",
+    "method": "POST",
+    "path": "/v1/imports",
+    "successStatus": 201,
+    "response": "ImportUploadSession",
+    "request": "CreateImportRequest",
+    "priority": "P2"
+  },
+  {
+    "operationId": "getImport",
+    "method": "GET",
+    "path": "/v1/imports/{id}",
+    "successStatus": 200,
+    "response": "Import",
+    "request": null,
+    "priority": "P2"
+  },
+  {
+    "operationId": "completeImport",
+    "method": "POST",
+    "path": "/v1/imports/{id}/complete",
+    "successStatus": 202,
+    "response": "Import",
+    "request": "CompleteImportRequest",
+    "priority": "P2"
+  }
+] as const;

@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -19,11 +20,17 @@ const (
 )
 
 type Config struct {
+	InvestigationProvider string
+	BedrockModelID        string
+	AWSRegion             string
 	Role                  Role
 	ListenAddr            string
 	DatabaseURL           string
 	AppMode               string
 	DemoAccessCode        string
+	DemoRoleCodes         map[string]string
+	AuthRateLimit         int
+	ExpensiveRateLimit    int
 	DemoJWTSecret         string
 	BankSimAdminToken     string
 	BankSimProviderToken  string
@@ -70,11 +77,48 @@ func Load(role Role) (Config, error) {
 		return Config{}, errors.New("APP_MODE must be demo or production")
 	}
 	cfg := Config{Role: role, ListenAddr: addr, DatabaseURL: dsn, AppMode: mode}
+	if role == API || role == Worker {
+		cfg.InvestigationProvider = os.Getenv("INVESTIGATION_PROVIDER")
+		if cfg.InvestigationProvider == "" {
+			cfg.InvestigationProvider = "OFFLINE_STUB"
+		}
+		if cfg.InvestigationProvider != "OFFLINE_STUB" && cfg.InvestigationProvider != "BEDROCK" {
+			return Config{}, errors.New("INVESTIGATION_PROVIDER must be OFFLINE_STUB or BEDROCK")
+		}
+		cfg.BedrockModelID = os.Getenv("BEDROCK_MODEL_ID")
+		cfg.AWSRegion = os.Getenv("AWS_REGION")
+		if cfg.InvestigationProvider == "BEDROCK" && (cfg.BedrockModelID == "" || cfg.AWSRegion == "") {
+			return Config{}, errors.New("explicit Bedrock mode requires BEDROCK_MODEL_ID and AWS_REGION")
+		}
+	}
+	if role == API {
+		for key, dest := range map[string]*int{"DEMO_AUTH_RATE_LIMIT": &cfg.AuthRateLimit, "EXPENSIVE_RATE_LIMIT": &cfg.ExpensiveRateLimit} {
+			if raw := os.Getenv(key); raw != "" {
+				n, err := strconv.Atoi(raw)
+				if err != nil || n < 1 || n > 10000 {
+					return Config{}, errors.New("invalid request rate limit")
+				}
+				*dest = n
+			}
+		}
+	}
 	if role == API && mode == "production" {
 		return Config{}, errors.New("production API authentication is not configured")
 	}
 	if role == API && mode == "demo" {
 		cfg.DemoAccessCode = os.Getenv("DEMO_ACCESS_CODE")
+		cfg.DemoRoleCodes = map[string]string{}
+		seen := map[string]bool{cfg.DemoAccessCode: true}
+		for _, role := range []string{"reviewer", "analyst", "viewer"} {
+			code := os.Getenv("DEMO_" + strings.ToUpper(role) + "_ACCESS_CODE")
+			if code != "" {
+				if len(code) < 16 || seen[code] {
+					return Config{}, errors.New("demo role codes must be distinct and at least 16 characters")
+				}
+				seen[code] = true
+				cfg.DemoRoleCodes["demo-"+role] = code
+			}
+		}
 		cfg.DemoJWTSecret = os.Getenv("DEMO_JWT_SECRET")
 		cfg.BankSimAdminToken = os.Getenv("BANKSIM_ADMIN_TOKEN")
 		cfg.BankSimProviderToken = os.Getenv("BANKSIM_PROVIDER_TOKEN")

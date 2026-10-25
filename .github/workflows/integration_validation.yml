@@ -1,0 +1,124 @@
+name: Full integration
+on:
+  pull_request:
+  push:
+    branches: [master, integration/full-stack]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integration-${{ github.head_ref && format('refs/heads/{0}', github.head_ref) || github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.0'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: make bootstrap
+      - run: make contract-check test lint build test-integration
+      - run: .venv/bin/python scripts/regenerate_openapi_types.py --check
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: settlegraph-web/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - run: make bootstrap frontend-install
+      - run: make frontend-check frontend-test frontend-build
+      - run: npx playwright install --with-deps chromium
+        working-directory: settlegraph-web
+      - run: make local-up
+      - run: make test-contract-runtime test-e2e test-web-live
+      - if: failure()
+        run: make local-logs
+      - if: always()
+        run: make local-down
+      - uses: actions/upload-artifact@v6
+        if: failure()
+        with:
+          name: browser-failure-screenshots
+          path: settlegraph-web/test-results/**/*.png
+          if-no-files-found: ignore
+          retention-days: 7
+  native-handoff:
+    needs: [backend, web]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      TZ: Africa/Addis_Ababa
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: settlegraph-web/package-lock.json
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.7'
+          channel: stable
+          cache: true
+      - run: make bootstrap frontend-install
+      - run: flutter pub get --enforce-lockfile
+        working-directory: mobile_app
+      - run: python3 mobile_app/scripts/sync_fixtures.py --check
+      - run: |
+          flutter analyze
+          flutter test --coverage
+          flutter build apk --debug --dart-define=APP_ENV=demo --dart-define=API_BASE_URL=http://10.0.2.2:8080
+          mkdir -p ../verification/apk
+          cp build/app/outputs/flutter-apk/app-debug.apk ../verification/apk/settlegraph-demo-debug.apk
+        working-directory: mobile_app
+      - run: npx playwright install --with-deps chromium
+        working-directory: settlegraph-web
+      - name: Enable KVM for the CI emulator
+        run: |
+          sudo chmod a+rw /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          cores: 2
+          ram-size: 1536M
+          disable-animations: true
+          disable-linux-hw-accel: false
+          emulator-boot-timeout: 300
+          emulator-options: -no-window -accel on -gpu swiftshader -feature -Vulkan -noaudio -no-boot-anim -no-snapshot
+          script: .venv/bin/python scripts/test_cross_client.py --runs 2 --device emulator-5554
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: cross-client-proof
+          path: |
+            verification/acceptance-*/
+            verification/latest-acceptance.json
+          if-no-files-found: ignore
+          retention-days: 14
+      - uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: integrated-android-debug
+          path: verification/apk/settlegraph-demo-debug.apk
+          retention-days: 14

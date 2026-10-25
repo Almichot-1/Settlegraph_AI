@@ -66,6 +66,7 @@ for name in ['bank-event-payment.json','bank-event-settlement.json']:
  check(not issues,f'{name}: {issues[0] if issues else "OK"}')
 
 ai=json.loads((C/'ai-investigation.schema.json').read_text())
+check(ai==json.loads((ROOT/'internal/investigation/result.schema.json').read_text()),'Embedded Bedrock result schema drift')
 valid=json.loads((F/'ai-investigation-valid.json').read_text())
 check(not list(Draft202012Validator(ai).iter_errors(valid)),'AI valid fixture rejected')
 
@@ -90,7 +91,7 @@ def strip_nullable(obj):
   return out
  return obj
 converted={k:strip_nullable(v) for k,v in schemas.items()}
-for fixture,schema_name in [('case-open.json','Case'),('dashboard-summary.json','DashboardSummary'),('scenario-run.json','ScenarioRun'),('demo-session-response.json','DemoSessionResponse'),('case-evidence.json','EvidencePage')]:
+for fixture,schema_name in [('members.json','MemberPage'),('case-open.json','Case'),('dashboard-summary.json','DashboardSummary'),('scenario-run.json','ScenarioRun'),('demo-session-response.json','DemoSessionResponse'),('case-evidence.json','EvidencePage')]:
  sch={'$ref':f'#/definitions/{schema_name}','definitions':converted}
  obj=json.loads((F/fixture).read_text())
  issues=list(Draft4Validator(sch,format_checker=FormatChecker()).iter_errors(obj))

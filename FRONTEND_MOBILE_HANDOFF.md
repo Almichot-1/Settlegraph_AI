@@ -1,6 +1,6 @@
 # Frontend + Flutter API handoff
 
-**Contract status:** Version `2.0.0-draft`. Backend not implemented. All mock examples are synthetic. `contracts/settlegraph-public.openapi.yaml` is the **normative schema**.
+**Contract status:** Version `2.0.0-draft`. The local synthetic backend and Flutter client are implemented; see `docs/implementation-progress.md` for actual test evidence and remaining client/cloud gates. All mock examples are synthetic. `contracts/settlegraph-public.openapi.yaml` is the **normative schema**.
 
 ## Runtime conventions
 
@@ -10,7 +10,7 @@
 | Production URL | HTTPS URL provided after deployment, never assume public simulator address |
 | Authentication | Login: `POST /v1/demo/sessions` with server-distributed `X-Demo-Access-Code`, then Bearer JWT |
 | Organization | `X-Organization-Id` required for every tenant route; use membership returned from `GET /v1/me` |
-| User role | `OWNER` controls demo and assignment; `REVIEWER` records decisions; `VIEWER` read only |
+| User role | Preserve `OWNER`, `ANALYST`, `REVIEWER`, `VIEWER`. Owner/analyst can assign and request analysis; mobile decisions are offered to owner/reviewer; viewer is read only. Server authorization remains authoritative. |
 | Amounts | `{"minor_units":"250000","currency":"ETB"}` means 2,500.00 ETB |
 | Case versions | `Case.version` → `If-Match: "3"` header on assign/decision; on 412 refresh case |
 | Duplicate POST protection | `Idempotency-Key` unique per user action and reused on network retries |
@@ -150,3 +150,16 @@ Use secure storage for app access token, do not log it. For Flutter case decisio
 ## Contract change management
 
 **No silent field changes.** Any change affecting `operationId`, URL, role, required header, JSON property, enum, status code, or money format is a contract change. Modify the YAML first, update example JSON and tests, send a concise migration note to both client engineers. If field addition is backward compatible, still announce its meaning.
+
+## Implemented Flutter workspace
+
+See [`mobile_app/README.md`](mobile_app/README.md). Default `APP_ENV=fixture` is a labeled sample workspace; `APP_ENV=demo` connects to the configurable product API with secure native session storage. Case filters and investigation pagination now follow the documented contract. Android native sample and live delayed-settlement review passed on 25 October 2026; iOS build/device verification is blocked by the local Xcode platform/runtime mismatch. Next.js joint smoke remains outstanding.
+
+
+## Integrated local workflow
+
+The integration checkout now includes both clients and the backend. Start with `make bootstrap && make local-up`; see [the local runbook](docs/local-testing.md). `GET /v1/members` returns the tenant's real assignment directory for OWNER/ANALYST. Seeded reviewer, analyst and viewer sessions use distinct server-configured access codes; display-name input never changes a role. OWNER/REVIEWER can decide; OWNER/ANALYST can assign or request analysis. Investigations now return QUEUED asynchronously and must be polled to a terminal status. Web cookies expire with the token. Both clients preserve an uncertain decision's exact body, key and version before allowing a replacement.
+
+Browser tests now verify actual BFF/API assignment, investigations, stale evidence and lost-reply retry. Native and joint test results for this integration are reported in the progress log; older standalone mobile evidence above is historical and does not prove this combined revision. Human client-owner contract acknowledgement remains separate from automated tests.
+
+The current integrated revision has now passed two consecutive fresh browser-owner/Android-reviewer rehearsals, including real form authentication, late-settlement 412, process termination and secure retry restoration, one decision/audit and unchanged source facts. The automated joint gate is TESTED; see [the verification record](docs/integration-verification.json) and PR #1 checks. This supersedes the earlier standalone-mobile joint-smoke limitation above. Written client-owner acknowledgement and cloud/iOS acceptance remain separate.

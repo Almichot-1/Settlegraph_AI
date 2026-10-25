@@ -15,7 +15,7 @@ func (a API) assignCase(w http.ResponseWriter, r *http.Request) { a.mutateCase(w
 func (a API) decideCase(w http.ResponseWriter, r *http.Request) { a.mutateCase(w, r, "decision") }
 
 func (a API) mutateCase(w http.ResponseWriter, r *http.Request, operation string) {
-	roles := []string{"OWNER", "ANALYST", "REVIEWER"}
+	roles := []string{"OWNER", "REVIEWER"}
 	if operation == "assign" {
 		roles = []string{"OWNER", "ANALYST"}
 	}

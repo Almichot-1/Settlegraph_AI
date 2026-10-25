@@ -8,7 +8,7 @@
 
 1. `PROJECT_MANAGER_DELIVERY_PLAYBOOK.md` — project charter, 22 implementation tickets, dependencies, realistic staffing, risk register and final acceptance.
 2. `BACKEND_IMPLEMENTATION_BLUEPRINT.md` — authoritative implementation phases, detailed checkboxes, invariants, acceptance tests and stopping rules.
-3. `contracts/settlegraph-public.openapi.yaml` — **normative web + Flutter API** (39 endpoints). Freeze property names and enum values before UI integration.
+3. `contracts/settlegraph-public.openapi.yaml` — **normative web + Flutter API** (40 operations). Freeze property names and enum values before UI integration.
 4. `contracts/banksim-internal.openapi.yaml` — BankSim provider/admin/evaluator boundaries (10 endpoints).
 5. `contracts/bank-event.schema.json` — incoming signed synthetic provider event body.
 6. `contracts/ai-investigation.schema.json` — bounded Bedrock investigation response structure.
@@ -53,6 +53,7 @@ python -m venv .venv
 Go 1.27, Docker Compose and Python 3 are required. Contract validation needs PyYAML and jsonschema (available in the local `.venv` when present). Run:
 
 ```bash
+make bootstrap
 make build
 make test
 make lint
@@ -64,9 +65,9 @@ make test-e2e
 make test-contract-runtime
 ```
 
-`make up` generates an ignored `.env` containing local synthetic service tokens, then starts the API on `127.0.0.1:8080`, BankSim on `127.0.0.1:8082`, a worker and two separate PostgreSQL databases. Migrations and seeds can be rerun. `make down` stops the stack and retains volumes. The API provides demo login, scenario orchestration, signed event ingestion, two-stage reconciliation, read APIs, case review and an evidence-linked offline investigator. The end-to-end script replays all four scenarios.
+`make up` generates an ignored `.env` containing local synthetic service tokens, then starts the API on `127.0.0.1:8080`, BankSim on `127.0.0.1:8082`, a worker and two separate PostgreSQL databases. Migrations and seeds can be rerun. `make down` stops the stack and retains volumes. The API provides demo login, scenario orchestration, signed event ingestion, two-stage reconciliation, read APIs, case review and a durable evidence-linked investigator with offline default and optional Bedrock adapter. The end-to-end script replays all four scenarios.
 
-The local databases use trust authentication only on unexposed Compose networks. Production API startup is intentionally disabled until a production identity provider is configured. AWS deployment, Bedrock access, cross-client acceptance and the optional S3 import flow remain open; see `docs/implementation-progress.md` and `AGENT_BACKLOG.json`. `GET /v1/accounts` returns the known synthetic account metadata without a balance until a provider observation supplies one. Import list/detail reads use the product database; create/upload/complete and parsing remain deferred.
+The local databases use trust authentication only on unexposed Compose networks. Production API startup is intentionally disabled until a production identity provider is configured. The local cross-client workflow is verified; AWS deployment, actual Bedrock account access and the optional S3 import flow remain open; see `docs/implementation-progress.md` and `AGENT_BACKLOG.json`. `GET /v1/accounts` returns the known synthetic account metadata without a balance until a provider observation supplies one. Import list/detail reads use the product database; create/upload/complete and parsing remain deferred.
 
 `validation/build_contracts.py` and `validation/generate_fixtures.py` regenerate contract assets; do not run them after client freeze without reviewing the changes. `validation/validate_pack.py` checks contracts and fixtures, while Go and end-to-end commands check runtime behavior.
 
@@ -96,3 +97,9 @@ Read `PROJECT_MANAGER_DELIVERY_PLAYBOOK.md` **after** the architecture blueprint
 ## Autonomous execution (optional)
 
 See `AUTONOMOUS_SETUP.md` and use `autonomous_build.py` to run the SG tickets through build/review/test/commit without manually typing continue. This is an opt-in local controller. Full-access `--unrestricted` bypasses Codex security boundaries and is dangerous on personal machines.
+
+## Integrated web and mobile development
+
+The integration branch contains `settlegraph-web/` and `mobile_app/`. Use `make bootstrap && make local-up` to start the complete local web/API/simulator stack. See [local testing](docs/local-testing.md), [the integration plan](docs/full-stack-integration-plan.md), and [actual progress](docs/implementation-progress.md).
+
+Local full-stack acceptance: [credential-free verification record](docs/integration-verification.json). Two fresh browser-owner/Android-reviewer runs passed, including process-restart retry, one decision/audit and unchanged financial source records. Current CI and review: [integration PR #1](https://github.com/Almichot-1/Settlegraph_AI/pull/1).

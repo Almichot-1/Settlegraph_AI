@@ -1,0 +1,20 @@
+{
+  "access_token": "<redacted-demo-jwt>",
+  "token_type": "Bearer",
+  "expires_at": "2026-10-24T10:00:00Z",
+  "user": {
+    "id": "33333333-3333-4333-8333-333333333333",
+    "display_name": "Demo Owner",
+    "memberships": [
+      {
+        "organization": {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "name": "Sample Merchant",
+          "mode": "DEMO"
+        },
+        "role": "OWNER"
+      }
+    ]
+  },
+  "default_organization_id": "11111111-1111-4111-8111-111111111111"
+}

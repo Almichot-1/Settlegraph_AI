@@ -71,8 +71,15 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	tx, err := a.DB.BeginTx(r.Context(), &sql.TxOptions{Isolation: sql.LevelRepeatableRead, ReadOnly: true})
+	if err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard snapshot unavailable", reqID(r))
+		return
+	}
+	defer tx.Rollback()
 	var orders, payments, settlements, unmatched int64
 	var open int
+	var latest sql.NullTime
 	queries := []struct {
 		sql  string
 		dest any
@@ -80,16 +87,17 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 		{`SELECT COALESCE(sum(amount_minor),0) FROM merchant_orders WHERE organization_id=$1`, &orders},
 		{`SELECT COALESCE(sum(amount_minor),0) FROM observations WHERE organization_id=$1 AND kind='PAYMENT_ACCEPTED'`, &payments},
 		{`SELECT COALESCE(sum(amount_minor),0) FROM observations WHERE organization_id=$1 AND kind='SETTLEMENT_POSTED'`, &settlements},
-		{`SELECT COALESCE(sum(p.amount_minor),0) FROM observations p WHERE p.organization_id=$1 AND p.kind='PAYMENT_ACCEPTED' AND NOT EXISTS(SELECT 1 FROM observations s WHERE s.organization_id=p.organization_id AND s.kind='SETTLEMENT_POSTED' AND s.transfer_reference=p.transfer_reference AND s.payment_reference=p.transfer_reference AND s.amount_minor=p.amount_minor AND s.currency=p.currency)`, &unmatched},
+		{`SELECT COALESCE(sum(p.amount_minor),0) FROM observations p WHERE p.organization_id=$1 AND p.kind='PAYMENT_ACCEPTED' AND NOT EXISTS(SELECT 1 FROM observations s WHERE s.organization_id=p.organization_id AND s.kind='SETTLEMENT_POSTED' AND s.scenario_run_id IS NOT DISTINCT FROM p.scenario_run_id AND s.transfer_reference=p.transfer_reference AND s.payment_reference=p.transfer_reference AND s.amount_minor=p.amount_minor AND s.currency=p.currency)`, &unmatched},
 		{`SELECT count(*) FROM investigation_cases WHERE organization_id=$1 AND status<>'RESOLVED'`, &open},
+		{`SELECT max(occurred_at) FROM observations WHERE organization_id=$1 AND kind IN ('PAYMENT_ACCEPTED','SETTLEMENT_POSTED')`, &latest},
 	}
 	for _, q := range queries {
-		if a.DB.QueryRowContext(r.Context(), q.sql, org).Scan(q.dest) != nil {
+		if tx.QueryRowContext(r.Context(), q.sql, org).Scan(q.dest) != nil {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard unavailable", reqID(r))
 			return
 		}
 	}
-	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,label,source_type,sync_status,last_observed_at FROM provider_sources WHERE organization_id=$1 ORDER BY id`, org)
+	rows, err := tx.QueryContext(r.Context(), `SELECT id,label,source_type,sync_status,last_observed_at FROM provider_sources WHERE organization_id=$1 ORDER BY id`, org)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard unavailable", reqID(r))
 		return
@@ -116,8 +124,8 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	var complete sql.NullTime
 	var status sql.NullString
 	var virtual sql.NullTime
-	_ = a.DB.QueryRowContext(r.Context(), `SELECT source_status,complete_through FROM source_status_snapshots WHERE organization_id=$1 AND provider_id='BANK_B' ORDER BY observed_at DESC,id DESC LIMIT 1`, org).Scan(&status, &complete)
-	_ = a.DB.QueryRowContext(r.Context(), `SELECT max(virtual_now) FROM scenario_runs WHERE organization_id=$1`, org).Scan(&virtual)
+	_ = tx.QueryRowContext(r.Context(), `SELECT source_status,complete_through FROM source_status_snapshots WHERE organization_id=$1 AND provider_id='BANK_B' ORDER BY observed_at DESC,id DESC LIMIT 1`, org).Scan(&status, &complete)
+	_ = tx.QueryRowContext(r.Context(), `SELECT max(virtual_now) FROM scenario_runs WHERE organization_id=$1`, org).Scan(&virtual)
 	isComplete := status.Valid && status.String == "HEALTHY" && complete.Valid && (!virtual.Valid || !complete.Time.Before(virtual.Time))
 	coverage := "INCOMPLETE_SOURCE"
 	if isComplete {
@@ -125,7 +133,15 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	} else if status.Valid && status.String == "STALE" {
 		coverage = "STALE"
 	}
-	writeJSON(w, 200, map[string]any{"as_of": a.now().Format(time.RFC3339), "orders_expected": money(orders), "payments_accepted": money(payments), "settlements_observed": money(settlements), "unmatched_payments": money(unmatched), "open_cases": open, "providers": providers, "coverage": map[string]any{"source_status": coverage, "is_complete": isComplete}})
+	if err = tx.Commit(); err != nil {
+		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard snapshot unavailable", reqID(r))
+		return
+	}
+	var latestActivity any
+	if latest.Valid {
+		latestActivity = latest.Time.UTC().Format(time.RFC3339Nano)
+	}
+	writeJSON(w, 200, map[string]any{"as_of": a.now().Format(time.RFC3339), "latest_activity_at": latestActivity, "orders_expected": money(orders), "payments_accepted": money(payments), "settlements_observed": money(settlements), "unmatched_payments": money(unmatched), "open_cases": open, "providers": providers, "coverage": map[string]any{"source_status": coverage, "is_complete": isComplete}})
 }
 
 func scanCase(rows interface{ Scan(...any) error }) (map[string]any, string, error) {
@@ -158,7 +174,20 @@ func (a API) cases(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), caseSelect+` WHERE c.organization_id=$1 AND ($2='' OR c.id::text>$2) ORDER BY c.id LIMIT $3`, org, cursor, limit+1)
+	status := r.URL.Query().Get("status")
+	if status != "" && status != "OPEN" && status != "EVIDENCE_UPDATED" && status != "RESOLVED" {
+		writeError(w, 400, "BAD_REQUEST", "Invalid case status", reqID(r))
+		return
+	}
+	assigned := r.URL.Query().Get("assigned_to")
+	run := r.URL.Query().Get("scenario_run_id")
+	if (assigned != "" && !demoUUID.MatchString(assigned)) || (run != "" && !demoUUID.MatchString(run)) {
+		writeError(w, 400, "BAD_REQUEST", "Malformed case filter ID", reqID(r))
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), caseSelect+` WHERE c.organization_id=$1 AND ($2='' OR c.id::text>$2)
+ AND ($4='' OR c.status=$4) AND ($5='' OR c.assigned_to::text=$5)
+ AND ($6='' OR c.scenario_run_id::text=$6) ORDER BY c.id LIMIT $3`, org, cursor, limit+1, status, assigned, run)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Cases unavailable", reqID(r))
 		return
@@ -319,13 +348,18 @@ func (a API) caseEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 404, "NOT_FOUND", "Case not found", reqID(r))
 		return
 	}
-	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,action,actor,message,version,occurred_at FROM case_events WHERE organization_id=$1 AND case_id=$2 ORDER BY version`, org, id)
+	limit, cursor, ok := a.limitCursor(w, r, org)
+	if !ok {
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), `SELECT id,action,actor,message,version,occurred_at FROM case_events WHERE organization_id=$1 AND case_id=$2 AND ($3='' OR (version,id)>(SELECT version,id FROM case_events WHERE organization_id=$1 AND case_id=$2 AND id=NULLIF($3,'')::uuid)) ORDER BY version,id LIMIT $4`, org, id, cursor, limit+1)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case events unavailable", reqID(r))
 		return
 	}
 	defer rows.Close()
 	items := []map[string]any{}
+	var next any
 	for rows.Next() {
 		var eventID, action, actor, message string
 		var version int
@@ -333,6 +367,10 @@ func (a API) caseEvents(w http.ResponseWriter, r *http.Request) {
 		if rows.Scan(&eventID, &action, &actor, &message, &version, &at) != nil {
 			writeError(w, 503, "SERVICE_UNAVAILABLE", "Case events unavailable", reqID(r))
 			return
+		}
+		if len(items) == limit {
+			next = a.nextCursor(r, org, items[len(items)-1]["id"].(string))
+			break
 		}
 		if action == "EVIDENCE_UPDATED" {
 			action = "EVIDENCE_ADDED"
@@ -343,5 +381,5 @@ func (a API) caseEvents(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Case events unavailable", reqID(r))
 		return
 	}
-	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": nil})
+	writeJSON(w, 200, map[string]any{"items": items, "next_cursor": next})
 }

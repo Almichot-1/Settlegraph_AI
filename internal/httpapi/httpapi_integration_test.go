@@ -28,7 +28,7 @@ func TestDemoIdentityRoleAndTenantBoundary(t *testing.T) {
 	defer db.Close()
 	const org = "11111111-1111-4111-8111-111111111111"
 	const other = "33333333-3333-4333-8333-333333333333"
-	_, err = db.Exec(`INSERT INTO app_users(id,auth_subject,display_name) VALUES('44444444-4444-4444-8444-444444444444','demo-viewer','Viewer')`)
+	_, err = db.Exec(`INSERT INTO app_users(id,auth_subject,display_name) VALUES('44444444-4444-4444-8444-444444444444','test-viewer','Viewer')`)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func TestDemoIdentityRoleAndTenantBoundary(t *testing.T) {
 	}
 	secret := "test-demo-jwt-secret-with-at-least-32-characters"
 	owner, _ := mintToken(secret, "demo-owner", time.Now().UTC())
-	viewer, _ := mintToken(secret, "demo-viewer", time.Now().UTC())
+	viewer, _ := mintToken(secret, "test-viewer", time.Now().UTC())
 	api := API{DB: db, Config: config.Config{AppMode: "demo", DemoJWTSecret: secret, DemoAccessCode: "test-demo-access-code"}}
 	handler := api.Handler()
 	cases := []struct {

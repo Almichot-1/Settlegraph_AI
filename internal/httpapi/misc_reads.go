@@ -71,7 +71,24 @@ func (a API) dashboardSeries(w http.ResponseWriter, r *http.Request) {
 	if granularity == "HOUR" {
 		trunc = "hour"
 	}
-	rows, err := a.DB.QueryContext(r.Context(), `SELECT date_trunc($2,occurred_at),COALESCE(sum(amount_minor) FILTER (WHERE kind='PAYMENT_ACCEPTED'),0),COALESCE(sum(amount_minor) FILTER (WHERE kind='SETTLEMENT_POSTED'),0) FROM observations WHERE organization_id=$1 GROUP BY 1 ORDER BY 1`, org, trunc)
+	from, fromErr := time.Parse(time.RFC3339, r.URL.Query().Get("from"))
+	to, toErr := time.Parse(time.RFC3339, r.URL.Query().Get("to"))
+	maxRange := 365 * 24 * time.Hour
+	if granularity == "HOUR" {
+		maxRange = 31 * 24 * time.Hour
+	}
+	if fromErr != nil || toErr != nil || !to.After(from) || to.Sub(from) > maxRange {
+		writeError(w, 400, "BAD_REQUEST", "A valid from/to range is required (31 days hourly, 365 days daily)", reqID(r))
+		return
+	}
+	rows, err := a.DB.QueryContext(r.Context(), `SELECT b.bucket,
+ COALESCE(sum(o.amount_minor) FILTER (WHERE o.kind='PAYMENT_ACCEPTED'),0),
+ COALESCE(sum(o.amount_minor) FILTER (WHERE o.kind='SETTLEMENT_POSTED'),0)
+ FROM generate_series(date_trunc($2,$3::timestamptz AT TIME ZONE 'UTC') AT TIME ZONE 'UTC',
+ $4::timestamptz-interval '1 microsecond', $5::interval) AS b(bucket)
+ LEFT JOIN observations o ON o.organization_id=$1 AND o.occurred_at>=$3 AND o.occurred_at<$4
+ AND o.occurred_at>=b.bucket AND o.occurred_at<b.bucket+$5::interval
+ GROUP BY b.bucket ORDER BY b.bucket`, org, trunc, from, to, "1 "+trunc)
 	if err != nil {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Series unavailable", reqID(r))
 		return

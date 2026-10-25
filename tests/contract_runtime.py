@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Validate live demo JSON responses against the public OpenAPI schemas."""
 import json
+import os
 import urllib.request
 from pathlib import Path
 
 import yaml
 from jsonschema import Draft4Validator, FormatChecker
 
-BASE = 'http://127.0.0.1:8080'
+BASE = os.environ.get('SETTLEGRAPH_API_URL', 'http://127.0.0.1:8080')
 ENV = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if '=' in line)
 DOC = yaml.safe_load(Path('contracts/settlegraph-public.openapi.yaml').read_text())
 
@@ -51,11 +52,11 @@ session = verify('/v1/demo/sessions', '/v1/demo/sessions',
                  'post', '201', {'display_name': 'Runtime Contract Check'})
 headers = {'Authorization': 'Bearer ' + session['access_token'],
            'X-Organization-Id': session['default_organization_id']}
-paths = ['/v1/me', '/v1/providers', '/v1/accounts', '/v1/dashboard/summary',
+paths = ['/v1/me', '/v1/members', '/v1/providers', '/v1/accounts', '/v1/dashboard/summary',
          '/v1/dashboard/series', '/v1/orders', '/v1/transactions', '/v1/settlements',
          '/v1/reconciliation/runs', '/v1/cases', '/v1/imports', '/v1/audit-events',
          '/v1/demo/scenarios']
-results = {path: verify(path, path, headers) for path in paths}
+results = {path: verify(path, path + ('?from=2026-10-24T00:00:00Z&to=2026-10-25T00:00:00Z' if path == '/v1/dashboard/series' else ''), headers) for path in paths}
 for collection, template in [('/v1/orders', '/v1/orders/{id}'),
                              ('/v1/transactions', '/v1/transactions/{id}'),
                              ('/v1/settlements', '/v1/settlements/{id}'),

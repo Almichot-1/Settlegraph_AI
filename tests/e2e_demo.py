@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Local Compose replay of the four synthetic scenarios and the review path."""
 import json
+import os
 import hmac
 import hashlib
 import secrets
@@ -11,8 +12,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-API = 'http://127.0.0.1:8080'
-BANK = 'http://127.0.0.1:8082'
+API = os.environ.get('SETTLEGRAPH_API_URL', 'http://127.0.0.1:8080')
+BANK = os.environ.get('SETTLEGRAPH_BANK_URL', 'http://127.0.0.1:8082')
 ORG = '11111111-1111-4111-8111-111111111111'
 ENV = dict(line.split('=', 1) for line in Path('.env').read_text().splitlines() if '=' in line)
 
@@ -135,6 +136,11 @@ expect(status == 200 and len(evidence['items']) >= 2, 'case evidence missing')
 status, investigation, _ = api(f"/v1/cases/{case['id']}/investigations", 'POST',
                                 {'mode':'EVIDENCE_ANALYSIS'}, nonce+'-investigate')
 expect(status == 202 and investigation['provider'] == 'OFFLINE_STUB', 'offline investigation failed')
+def completed_investigation():
+    status, current, _ = api(f"/v1/cases/{case['id']}/investigations/{investigation['id']}")
+    expect(status == 200 and current['status'] not in ('FAILED','REJECTED'), 'investigation failed')
+    return current if current['status'] == 'COMPLETED' else None
+investigation = wait_for(completed_investigation, 'asynchronous investigation completion')
 allowed = {item['id'] for item in evidence['items']}
 expect(set(investigation['result']['evidence_ids']) <= allowed, 'investigation fabricated evidence')
 advance(delayed, nonce, 2)

@@ -13,10 +13,13 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 
+	awsconfig "github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/settlegraph/settlegraph/internal/banksim"
 	"github.com/settlegraph/settlegraph/internal/config"
 	"github.com/settlegraph/settlegraph/internal/health"
 	"github.com/settlegraph/settlegraph/internal/httpapi"
+	"github.com/settlegraph/settlegraph/internal/investigation"
 	"github.com/settlegraph/settlegraph/internal/jobs"
 )
 
@@ -57,7 +60,16 @@ func Run(role config.Role) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if role == config.Worker {
-		go jobs.Loop(ctx, db)
+		var analyzer investigation.Analyzer = investigation.OfflineAnalyzer{}
+		if cfg.InvestigationProvider == "BEDROCK" {
+			sdk, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.AWSRegion), awsconfig.WithRetryMaxAttempts(1))
+			if err != nil {
+				return errors.New("Bedrock configuration unavailable")
+			}
+			client := bedrockruntime.NewFromConfig(sdk)
+			analyzer = investigation.Bedrock{Client: client, ModelID: cfg.BedrockModelID}
+		}
+		go jobs.LoopWithAnalyzer(ctx, db, analyzer)
 	}
 	if role == config.BankSim {
 		go bank.DeliverLoop(ctx)

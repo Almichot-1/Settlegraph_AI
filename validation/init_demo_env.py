@@ -7,7 +7,8 @@ path = Path('.env')
 existing = path.read_text() if path.exists() else ''
 keys = {line.split('=', 1)[0] for line in existing.splitlines() if '=' in line}
 with path.open('a') as out:
-    for name, length in [('DEMO_ACCESS_CODE', 24), ('DEMO_JWT_SECRET', 48),
+    for name, length in [('DEMO_ACCESS_CODE', 24), ('DEMO_REVIEWER_ACCESS_CODE', 24),
+                         ('DEMO_ANALYST_ACCESS_CODE', 24), ('DEMO_VIEWER_ACCESS_CODE', 24), ('DEMO_JWT_SECRET', 48),
                          ('BANKSIM_ADMIN_TOKEN', 48), ('BANKSIM_PROVIDER_TOKEN', 48),
                          ('BANKSIM_EVALUATOR_TOKEN', 48), ('BANKSIM_WEBHOOK_SECRET', 48)]:
         if name not in keys:

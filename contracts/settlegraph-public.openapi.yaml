@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: SettleGraph AI — Web + Mobile Public API
   version: 2.0.0-draft
-  description: Normative proposed client contract, not yet implemented. All financial amounts are decimal-string
+  description: Normative client contract. See docs/implementation-progress.md for supported operations. Financial amounts are decimal-string
     minor units. Simulated provider data is not authenticated real-world bank balance information.
 servers:
 - url: http://localhost:8080
@@ -65,7 +65,7 @@ paths:
       - Identity
       operationId: createDemoSession
       summary: Mint demo-only session token
-      description: Only enabled when APP_MODE=demo. Never expose demo minting in production.
+      description: Only enabled when APP_MODE=demo. Server-configured access codes select seeded demo principals; a display name never grants a role. Never expose demo minting in production.
       requestBody:
         required: true
         content:
@@ -83,6 +83,8 @@ paths:
                 $ref: '#/components/schemas/DemoSessionResponse'
         '400':
           $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
         '404':
@@ -106,6 +108,32 @@ paths:
           $ref: '#/components/responses/Unauthorized'
       x-implementation-priority: P0
       x-client: web-flutter
+  /v1/members:
+    get:
+      tags: [Identity]
+      operationId: listMembers
+      summary: Active organization members available for assignment (OWNER or ANALYST)
+      parameters:
+      - $ref: '#/components/parameters/Org'
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Active members of this organization only
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      x-implementation-priority: P0
+      x-client: web-primary
   /v1/providers:
     get:
       tags:
@@ -447,6 +475,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P1
       x-client: web-primary
     post:
@@ -741,6 +771,8 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
         '412':
           $ref: '#/components/responses/PreconditionFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P1
       x-client: web-flutter
   /v1/cases/{caseId}/decisions:
@@ -781,6 +813,8 @@ paths:
           $ref: '#/components/responses/PreconditionRequired'
         '412':
           $ref: '#/components/responses/PreconditionFailed'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-flutter
   /v1/cases/{caseId}/investigations:
@@ -818,6 +852,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-flutter
     get:
@@ -993,6 +1029,8 @@ paths:
           $ref: '#/components/responses/Conflict'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-primary
   /v1/demo/scenario-runs/{scenarioRunId}:
@@ -1060,6 +1098,8 @@ paths:
           $ref: '#/components/responses/PreconditionFailed'
         '503':
           $ref: '#/components/responses/ServiceUnavailable'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P0
       x-client: web-primary
   /v1/integrations/banksim/events:
@@ -1140,6 +1180,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P2
       x-client: web-primary
     post:
@@ -1236,6 +1278,8 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
       x-implementation-priority: P2
       x-client: web-primary
 components:
@@ -1253,6 +1297,31 @@ components:
       in: header
       name: X-BankSim-Signature
   schemas:
+    Member:
+      type: object
+      additionalProperties: false
+      required: [id, display_name, role]
+      properties:
+        id:
+          type: string
+          format: uuid
+        display_name:
+          type: string
+        role:
+          type: string
+          enum: [OWNER, ANALYST, REVIEWER, VIEWER]
+    MemberPage:
+      type: object
+      additionalProperties: false
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Member'
+        next_cursor:
+          type: string
+          nullable: true
     Money:
       type: object
       required:
@@ -1451,6 +1520,11 @@ components:
         as_of:
           type: string
           format: date-time
+        latest_activity_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Latest observed payment or settlement event time. Use this source timeline for charts; as_of remains the server snapshot time.
         orders_expected:
           $ref: '#/components/schemas/Money'
         payments_accepted:
@@ -2662,6 +2736,12 @@ components:
             $ref: '#/components/schemas/ApiError'
     RateLimited:
       description: Rate limited
+      headers:
+        Retry-After:
+          description: Minimum seconds before retrying
+          schema:
+            type: integer
+            minimum: 1
       content:
         application/json:
           schema:

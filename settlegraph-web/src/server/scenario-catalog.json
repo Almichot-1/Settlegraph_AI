@@ -1,0 +1,121 @@
+{
+  "catalog_version": "v1",
+  "currency": "ETB",
+  "seed_policy": "Fixed seeded test fixtures; virtual time starts 2026-10-24T09:00:00Z",
+  "cases": [
+    {
+      "key": "normal_flow",
+      "seed": 101,
+      "total_steps": 2,
+      "expected": {
+        "unique_payment_observations": 1,
+        "unique_settlement_observations": 1,
+        "order_payment_matches": 1,
+        "payment_settlement_matches": 1,
+        "case_count": 0,
+        "ledger_balanced": true
+      },
+      "steps": [
+        {
+          "step": 1,
+          "action": "accept_2500_payment",
+          "event": "PAYMENT_ACCEPTED"
+        },
+        {
+          "step": 2,
+          "action": "post_2500_settlement",
+          "event": "SETTLEMENT_POSTED"
+        }
+      ]
+    },
+    {
+      "key": "delayed_settlement",
+      "seed": 102,
+      "total_steps": 3,
+      "expected": {
+        "unique_payment_observations": 1,
+        "unique_settlement_observations": 1,
+        "order_payment_matches": 1,
+        "payment_settlement_matches": 1,
+        "case_count_after_grace": 1,
+        "case_status_after_recovery": "EVIDENCE_UPDATED",
+        "ledger_balanced": true
+      },
+      "steps": [
+        {
+          "step": 1,
+          "action": "accept_2500_payment",
+          "event": "PAYMENT_ACCEPTED"
+        },
+        {
+          "step": 2,
+          "action": "advance_virtual_clock_past_settlement_due",
+          "event": null,
+          "expected_case": "SETTLEMENT_NOT_OBSERVED"
+        },
+        {
+          "step": 3,
+          "action": "post_and_deliver_2500_settlement",
+          "event": "SETTLEMENT_POSTED",
+          "expected_case_status": "EVIDENCE_UPDATED"
+        }
+      ]
+    },
+    {
+      "key": "duplicate_webhook",
+      "seed": 103,
+      "total_steps": 2,
+      "expected": {
+        "unique_payment_observations": 1,
+        "unique_settlement_observations": 1,
+        "duplicate_event_ack_count_min": 1,
+        "order_payment_matches": 1,
+        "payment_settlement_matches": 1,
+        "ledger_balanced": true
+      },
+      "steps": [
+        {
+          "step": 1,
+          "action": "accept_2500_payment_and_emit_identical_event_twice",
+          "event": "PAYMENT_ACCEPTED"
+        },
+        {
+          "step": 2,
+          "action": "post_2500_settlement",
+          "event": "SETTLEMENT_POSTED"
+        }
+      ]
+    },
+    {
+      "key": "provider_outage",
+      "seed": 104,
+      "total_steps": 3,
+      "expected": {
+        "unique_payment_observations": 1,
+        "unique_settlement_observations_after_backfill": 1,
+        "before_recovery_coverage": "INCOMPLETE_SOURCE",
+        "after_recovery_coverage": "COMPLETE",
+        "ledger_balanced": true
+      },
+      "steps": [
+        {
+          "step": 1,
+          "action": "accept_2500_payment",
+          "event": "PAYMENT_ACCEPTED"
+        },
+        {
+          "step": 2,
+          "action": "post_settlement_but_hide_callback_and_disable_provider_api",
+          "event": null,
+          "expected_coverage": "INCOMPLETE_SOURCE"
+        },
+        {
+          "step": 3,
+          "action": "recover_api_and_backfill",
+          "event": "SETTLEMENT_POSTED",
+          "expected_coverage": "COMPLETE"
+        }
+      ]
+    }
+  ]
+}

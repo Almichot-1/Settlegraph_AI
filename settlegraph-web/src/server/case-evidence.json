@@ -1,0 +1,26 @@
+{
+  "items": [
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "record_type": "PAYMENT",
+      "reference": "SIM-TRF-1045",
+      "amount": {
+        "minor_units": "250000",
+        "currency": "ETB"
+      },
+      "occurred_at": "2026-10-24T09:00:00Z",
+      "provider_id": "BANK_A",
+      "raw_payload_sha256": null
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "record_type": "SOURCE_STATUS",
+      "reference": "BANK_B:complete-through-11:00Z",
+      "amount": null,
+      "occurred_at": "2026-10-24T11:00:00Z",
+      "provider_id": "BANK_B",
+      "raw_payload_sha256": null
+    }
+  ],
+  "next_cursor": null
+}
