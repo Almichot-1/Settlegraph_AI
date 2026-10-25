@@ -90,6 +90,10 @@ jobs:
         working-directory: mobile_app
       - run: npx playwright install --with-deps chromium
         working-directory: settlegraph-web
+      - name: Enable KVM for the CI emulator
+        run: |
+          sudo chmod a+rw /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
       - uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -99,7 +103,9 @@ jobs:
           cores: 2
           ram-size: 1536M
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
+          disable-linux-hw-accel: false
+          emulator-boot-timeout: 300
+          emulator-options: -no-window -accel on -gpu swiftshader -feature -Vulkan -noaudio -no-boot-anim -no-snapshot
           script: .venv/bin/python scripts/test_cross_client.py --runs 2 --device emulator-5554
       - uses: actions/upload-artifact@v6
         if: always()
@@ -111,6 +117,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
       - uses: actions/upload-artifact@v6
+        if: always()
         with:
           name: integrated-android-debug
           path: verification/apk/settlegraph-demo-debug.apk

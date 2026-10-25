@@ -24,7 +24,7 @@ export async function runMutation<T>(scope:string,body:unknown,version:number|un
   try {
     const result=await execute(attempt);store.removeItem(prefix+scope);return result;
   } catch(error) {
-    if(error instanceof ApiRequestError&&error.status<500)store.removeItem(prefix+scope);
+    if(error instanceof ApiRequestError&&error.status<500&&error.status!==429)store.removeItem(prefix+scope);
     throw error;
   }
 }

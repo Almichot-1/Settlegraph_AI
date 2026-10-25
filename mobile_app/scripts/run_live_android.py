@@ -39,7 +39,7 @@ args.artifacts.mkdir(parents=True,exist_ok=True)
 def request(path,body=None,headers=None):
     req=urllib.request.Request(args.api_url+path,data=None if body is None else json.dumps(body).encode(),headers={'Content-Type':'application/json',**(headers or {})})
     with urllib.request.urlopen(req,timeout=20) as response:
-        if path!='/v1/demo/sessions':trace.append({'method':req.method,'path':path,'status':response.status})
+        if path!='/v1/demo/sessions':trace.append({'method':req.get_method(),'path':path,'status':response.status})
         return json.load(response)
 def login(code):return request('/v1/demo/sessions',{'display_name':'Integration reviewer'},{'X-Demo-Access-Code':code})
 owner=login(settings['DEMO_ACCESS_CODE']);session=login(settings['DEMO_REVIEWER_ACCESS_CODE'])
@@ -99,7 +99,7 @@ class Harness(BaseHTTPRequestHandler):
     def do_GET(self):
         global unconfirmed,financial_before
         if self.path=='/'+nonce+'/session':
-            body={'session':session,'case':case,'scenario_run_id':run['id']}
+            body={'session':session,'case':case,'scenario_run_id':run['id'],'access_code':settings['DEMO_REVIEWER_ACCESS_CODE']}
         elif self.path=='/'+nonce+'/settlement':
             with Harness.lock:
                 if not Harness.released:

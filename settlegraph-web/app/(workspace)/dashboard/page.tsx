@@ -21,7 +21,7 @@ export default function Dashboard() {
     setBusy(true);
     try {
       const d=await api.getDashboardSummary();
-      const to=new Date(Date.parse(d.as_of)+1);
+      const to=new Date(Date.parse(d.latest_activity_at??d.as_of)+1);
       const from=new Date(to.getTime()-7*86400000);
       const [s,c,t]=await Promise.all([
         api.getDashboardSeries({from:from.toISOString(),to:to.toISOString(),granularity:'DAY'}),
@@ -112,7 +112,7 @@ export default function Dashboard() {
       <div className="dashboard-columns">
         <Panel
           title="Payment flow"
-          subtitle="Accepted payments and observed settlements · last 7 days"
+          subtitle="Accepted payments and observed settlements · last 7 days on the source timeline"
           action={
             <div className="tiny-key" aria-label="Chart legend">
               <span className="key-dot teal" aria-hidden="true" />

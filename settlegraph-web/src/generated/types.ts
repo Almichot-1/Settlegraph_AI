@@ -76,6 +76,7 @@ export type ProviderList = {
 
 export type DashboardSummary = {
   "as_of": string;
+  "latest_activity_at"?: (string) | null;
   "orders_expected": Money;
   "payments_accepted": Money;
   "settlements_observed": Money;

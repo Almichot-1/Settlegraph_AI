@@ -97,6 +97,9 @@ func TestSharedIdentityFiltersAndHistory(t *testing.T) {
 	}
 	scenario := rowID(`INSERT INTO scenario_runs(organization_id,scenario_key,seed,total_steps,virtual_now) VALUES($1,'normal_flow',999,2,now()) RETURNING id`, demoOrg)
 	run := rowID(`INSERT INTO reconciliation_runs(organization_id,scope,rules_version,status,snapshot_cutoff,job_key) VALUES($1,'LATEST_OBSERVATIONS','v1','COMPLETED',now(),'test-matches') RETURNING id`, demoOrg)
+	if get("/v1/dashboard/summary")["latest_activity_at"] != nil {
+		t.Fatal("empty source timeline must be null")
+	}
 	for i := 0; i < 4; i++ {
 		provider := "BANK_A"
 		var scope any = scenario
@@ -137,6 +140,17 @@ func TestSharedIdentityFiltersAndHistory(t *testing.T) {
 		t.Fatal("to boundary overlaps")
 	}
 	call("GET", "/v1/dashboard/series?from=2020-01-01T00:00:00Z&to=2026-01-01T00:00:00Z", "demo-owner", "", "", "", 400)
+	futureInbox := rowID(`INSERT INTO inbox_events(organization_id,provider_id,provider_event_id,source_sequence,payload,payload_sha256) VALUES($1,'BANK_A',gen_random_uuid(),5,'{}','future-hash') RETURNING id`, demoOrg)
+	rowID(`INSERT INTO observations(organization_id,inbox_event_id,provider_id,kind,transfer_reference,amount_minor,occurred_at,source_sequence) VALUES($1,$2,'BANK_A','PAYMENT_ACCEPTED','FUTURE-CHART',100,'2030-01-01T09:00:00Z',5) RETURNING id`, demoOrg, futureInbox)
+	foreignScopeInbox := rowID(`INSERT INTO inbox_events(organization_id,provider_id,provider_event_id,source_sequence,payload,payload_sha256) VALUES($1,'BANK_B',gen_random_uuid(),6,'{}','other-scope') RETURNING id`, demoOrg)
+	rowID(`INSERT INTO observations(organization_id,inbox_event_id,provider_id,kind,transfer_reference,payment_reference,amount_minor,occurred_at,source_sequence) VALUES($1,$2,'BANK_B','SETTLEMENT_POSTED','PAY-0','PAY-0',100,'2030-01-01T09:00:00Z',6) RETURNING id`, demoOrg, foreignScopeInbox)
+	dashboard := get("/v1/dashboard/summary")
+	if dashboard["latest_activity_at"] != "2030-01-01T09:00:00Z" || dashboard["as_of"] == dashboard["latest_activity_at"] {
+		t.Fatal("source activity clock was replaced by the server snapshot clock")
+	}
+	if dashboard["unmatched_payments"].(map[string]any)["minor_units"] != "500" {
+		t.Fatal("a settlement in another scenario scope hid an unmatched payment")
+	}
 	caseID := rowID(`INSERT INTO investigation_cases(organization_id,kind,fingerprint,title,summary,severity,version) VALUES($1,'SETTLEMENT_NOT_OBSERVED','history-test','Test','Test','MEDIUM',110) RETURNING id`, demoOrg)
 	for i := 1; i <= 110; i++ {
 		exec(`INSERT INTO case_events(organization_id,case_id,version,action,actor,message) VALUES($1,$2,$3,'EVIDENCE_ADDED','test','test')`, demoOrg, caseID, i)

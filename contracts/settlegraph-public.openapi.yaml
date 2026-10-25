@@ -1520,6 +1520,11 @@ components:
         as_of:
           type: string
           format: date-time
+        latest_activity_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Latest observed payment or settlement event time. Use this source timeline for charts; as_of remains the server snapshot time.
         orders_expected:
           $ref: '#/components/schemas/Money'
         payments_accepted:

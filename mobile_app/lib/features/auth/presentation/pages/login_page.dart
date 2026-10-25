@@ -137,7 +137,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: Text(
                       d.config.isFixture
                           ? 'Sample data only. Explore a synthetic review without a connection.'
-                          : 'Simulated funds and fictional institutions. Your access code opens the shared demo owner account.',
+                          : 'Simulated funds and fictional institutions. Your access code opens the workspace with its assigned demo role.',
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: c.muted),

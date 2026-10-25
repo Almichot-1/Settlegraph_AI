@@ -32,7 +32,7 @@ for process in Path('/proc').iterdir():
   command=(process/'cmdline').read_bytes().decode().split('\0')
   if any('com.android.sdklib.tool.sdkmanager.SdkManagerCli' in c for c in command) and any(str(sdk) in c for c in command):os.kill(int(process.name),signal.SIGTERM)
  except (OSError,UnicodeDecodeError):pass
-wanted={'platform-tools','platforms;android-36','build-tools;36.0.0','emulator','ndk;28.2.13676358','system-images;android-35;default;x86_64'}
+wanted={'platform-tools','platforms;android-36','platforms;android-35','cmake;3.22.1','build-tools;36.0.0','build-tools;35.0.0','emulator','ndk;28.2.13676358','system-images;android-35;default;x86_64'}
 lock_path=ROOT/'docs/mobile-toolchain-lock.json'
 if lock_path.exists():packages=json.loads(lock_path.read_text())['android_packages']
 else:
@@ -90,6 +90,6 @@ def install(package):
   shutil.copytree(contents,target,symlinks=True)
   (target/'package.xml').write_text(package['package_xml'])
  print('Installed official package:',package['path'],flush=True)
-order={'platform-tools':0,'build-tools;36.0.0':1,'platforms;android-36':2,'emulator':3,'system-images;android-35;default;x86_64':4,'ndk;28.2.13676358':5}
+order={'platform-tools':0,'build-tools;35.0.0':1,'build-tools;36.0.0':1,'platforms;android-35':2,'platforms;android-36':2,'cmake;3.22.1':2,'emulator':3,'system-images;android-35;default;x86_64':4,'ndk;28.2.13676358':5}
 with ThreadPoolExecutor(max_workers=2) as pool:list(pool.map(install,sorted(packages,key=lambda item:order[item['path']])))
 print('Project Android SDK packages installed and checksums verified.')

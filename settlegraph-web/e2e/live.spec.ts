@@ -49,17 +49,22 @@ test('real browser: assigned evidence, stale review and persisted same-key retry
   await expect(page.getByRole('button',{name:'I reviewed the updated evidence'})).toBeVisible();
   await expect(page.getByRole('button',{name:'Submit decision'})).toBeDisabled();
   await page.getByRole('button',{name:'I reviewed the updated evidence'}).click();
-  let first=true;const attempts:{key:string;body:string|null;match:string|undefined}[]=[];
+  let first=true;let throttle=true;const attempts:{key:string;body:string|null;match:string|undefined}[]=[];
   await page.route('**/api/sg/v1/cases/'+record.id+'/decisions',async route=>{
     const req=route.request();attempts.push({key:req.headers()['idempotency-key'],body:req.postData(),match:req.headers()['if-match']});
-    if(first){first=false;const accepted=await route.fetch();expect(accepted.status()).toBe(200);await route.abort('failed');}else await route.continue();
+    if(first){first=false;const accepted=await route.fetch();expect(accepted.status()).toBe(200);await route.abort('failed');}
+    else if(throttle){throttle=false;await route.fulfill({status:429,headers:{'Retry-After':'1'},json:{error:{code:'RATE_LIMITED',message:'Wait before retrying.',request_id:'rate-test'}}});}
+    else await route.continue();
   });
   await page.getByRole('button',{name:'Submit decision'}).click();
   await expect(page.getByRole('button',{name:'Retry unconfirmed decision'})).toBeVisible();
   await page.reload();await expect(page.getByRole('button',{name:'Retry unconfirmed decision'})).toBeVisible();
   await expect(page.getByLabel('Reason (minimum 5 characters)')).toBeDisabled();
   await page.getByRole('button',{name:'Retry unconfirmed decision'}).click();
-  await expect.poll(async()=>attempts.length).toBe(2);expect(attempts[1]).toEqual(attempts[0]);
+  await expect.poll(async()=>attempts.length).toBe(2);
+  await expect(page.getByRole('button',{name:'Retry unconfirmed decision'})).toBeVisible();
+  await page.getByRole('button',{name:'Retry unconfirmed decision'}).click();
+  await expect.poll(async()=>attempts.length).toBe(3);expect(attempts[1]).toEqual(attempts[0]);expect(attempts[2]).toEqual(attempts[0]);
   await expect.poll(async()=> (await get('/v1/cases/'+record.id)).status).toBe('RESOLVED');
   const events=await get('/v1/cases/'+record.id+'/events');expect(events.items.filter((e:{type:string})=>e.type==='RESOLVED')).toHaveLength(1);
   await page.goto('/transactions?scenario_run_id='+run.id);
@@ -76,6 +81,12 @@ test('real browser: assigned evidence, stale review and persisted same-key retry
   expect(reconciliation.request().postDataJSON()).toEqual({scope:'SCENARIO_RUN',scenario_run_id:run.id});
   const manual=await reconciliation.json();
   await expect.poll(async()=> (await get('/v1/reconciliation/runs/'+manual.id)).status,{timeout:20000}).toBe('COMPLETED');
+  const chart=page.waitForResponse(r=>r.url().includes('/v1/dashboard/series?'));
+  await page.goto('/dashboard');
+  const points=(await (await chart).json()).points;
+  const snapshot=await get('/v1/dashboard/summary');
+  expect(points.at(-1).bucket_start.slice(0,10)).toBe(new Date(snapshot.latest_activity_at).toISOString().slice(0,10));
+  expect(points.some((p:{payments_accepted:{minor_units:string}})=>BigInt(p.payments_accepted.minor_units)>0n)).toBeTruthy();
 });
 
 test('BFF actual routes enforce origin, route, body, role and expiry controls',async({page,request,context})=>{

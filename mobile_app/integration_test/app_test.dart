@@ -140,9 +140,7 @@ void main() {
 
         final setup = await getHarness('session');
         const storage = SecureSessionStorage();
-        if (phase == 'submit') {
-          await storage.write(jsonEncode(setup['session']));
-        }
+        if (phase == 'submit') await storage.clear();
         final wire = ReviewFaultClient((attempt) async {
           final client = HttpClient();
           try {
@@ -174,6 +172,19 @@ void main() {
         );
         await tester.pumpWidget(SettleGraphApp(dependencies: d));
         await tester.pumpAndSettle();
+        if (phase == 'submit') {
+          await tester.enterText(
+            find.byType(TextFormField).first,
+            'Android reviewer',
+          );
+          await tester.enterText(
+            find.byType(TextFormField).last,
+            setup['access_code'] as String,
+          );
+          await tester.ensureVisible(find.text('Continue to workspace'));
+          await tester.tap(find.text('Continue to workspace'));
+          await tester.pumpAndSettle();
+        }
         expect(find.text('Your review desk'), findsOneWidget);
         expect(
           d.sessions.session!.user.id,

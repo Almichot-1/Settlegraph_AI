@@ -34,7 +34,7 @@ Mobile setup and native acceptance are tracked in the integration progress repor
 
 ## Android toolchain and review
 
-The mobile project pins Flutter 3.41.7 (Dart 3.11.5), Java 21, Android platform/build-tools 36 and an API 35 x86_64 emulator. On Linux x86_64 the project installer uses official archives, verified published checksums and an isolated `.tools/` directory. Downloads resume after interruption. It requires Docker for the pinned JDK image and explicit acceptance of Google's SDK licence:
+The mobile project pins Flutter 3.41.7 (Dart 3.11.5), Java 21, Android platforms/build-tools 35 and 36, NDK 28.2, CMake 3.22.1 and an API 35 x86_64 emulator. On Linux x86_64 the project installer uses official archives, verified published checksums and an isolated `.tools/` directory. Downloads resume after interruption. It requires Docker for the pinned JDK image and explicit acceptance of Google's SDK licence:
 
 ```sh
 python3 scripts/setup_mobile.py --accept-android-license
@@ -49,7 +49,7 @@ python3 mobile_app/scripts/run_live_android.py --device emulator-5554
 
 Pass the SDK licence flag only after reading and accepting the linked terms printed by the installer. The installation leaves shared Flutter, Java and Android settings unchanged. Exact official download URLs/checksums are recorded in `docs/mobile-toolchain-lock.json`. Other hosts may provide Flutter 3.41.7 through `FLUTTER_BIN`, Java 21 through `JAVA_HOME`, and a compatible Android SDK through `ANDROID_HOME`; the wrappers select project tools when they exist. Native iOS requires a compatible macOS/Xcode installation and is not verified on this Linux host.
 
-The native harness authenticates separate owner/reviewer identities in process memory and supplies a short-lived reviewer session through a random loopback test endpoint. Access codes are not compiled into the app. It checks the late-settlement 412 conflict, explicit acknowledgement, a lost successful reply, app process termination, encrypted pending-decision restoration and exact idempotent retry. It verifies one final reviewer decision through the product API. Test fault injection exists only in `integration_test/`.
+The native harness authenticates separate owner/reviewer identities and supplies runtime test credentials through a random loopback endpoint. Android signs in through its form and restores its encrypted session on restart. Access codes are not compiled into the app. It checks the late-settlement 412 conflict, explicit acknowledgement, a lost successful reply, app process termination, encrypted pending-decision restoration and exact idempotent retry. It verifies one final reviewer decision through the product API. Test fault injection exists only in `integration_test/`.
 
 For an actual browser/native handoff, start one emulator, then run:
 

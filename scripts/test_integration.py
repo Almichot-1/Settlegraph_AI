@@ -24,7 +24,9 @@ try:
     run('docker', 'run', '-d', '--name', name, '-e', 'POSTGRES_HOST_AUTH_METHOD=trust',
         '-p', '127.0.0.1::5432', '-v', str(ROOT / 'db') + ':/migrations:ro', 'postgres:17.6-alpine', capture=True)
     for _ in range(60):
-        if subprocess.run(['docker', 'exec', name, 'pg_isready', '-U', 'postgres'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+        # The image's temporary bootstrap server accepts Unix sockets before
+        # initialization ends. TCP readiness selects the final server.
+        if subprocess.run(['docker', 'exec', name, 'pg_isready', '-h', '127.0.0.1', '-U', 'postgres'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
             break
         time.sleep(.5)
     else:

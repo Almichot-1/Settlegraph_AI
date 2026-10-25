@@ -13,7 +13,7 @@ services:
       - ./db:/migrations:ro
     networks: [product-db-net]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U settlegraph -d settlegraph"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U settlegraph -d settlegraph"]
       interval: 2s
       timeout: 3s
       retries: 30
@@ -29,7 +29,7 @@ services:
       - ./db:/migrations:ro
     networks: [banksim-db-net]
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U banksim -d banksim"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U banksim -d banksim"]
       interval: 2s
       timeout: 3s
       retries: 30

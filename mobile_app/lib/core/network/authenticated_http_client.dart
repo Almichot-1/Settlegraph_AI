@@ -85,7 +85,10 @@ class AuthenticatedHttpClient implements ApiClient {
           status: status,
           code: error['code'] as String? ?? 'HTTP_ERROR',
           requestId: error['request_id'] as String?,
-          uncertain: method == 'POST' && status != null && status >= 500,
+          uncertain:
+              method == 'POST' &&
+              status != null &&
+              (status >= 500 || status == 429),
         );
       }
       throw Failure(
@@ -94,7 +97,9 @@ class AuthenticatedHttpClient implements ApiClient {
             : 'The workspace could not complete this request.',
         status: status,
         code: status == null ? 'NETWORK' : 'HTTP_ERROR',
-        uncertain: method == 'POST' && (status == null || status >= 500),
+        uncertain:
+            method == 'POST' &&
+            (status == null || status >= 500 || status == 429),
       );
     }
   }

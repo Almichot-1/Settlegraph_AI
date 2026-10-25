@@ -42,3 +42,9 @@ No OpenAPI or fixture shape changed. `listCases` now applies documented `assigne
 Nonbreaking response documentation: every rate-limited public POST now declares 429 with `Retry-After`; demo authentication declares its existing 401 response. Provider webhook delivery is excluded from the user mutation limiter. Defaults are 30 demo logins and 120 mutations per minute per API process; configure limits through the API runtime environment.
 
 Investigation creation retains the 202 contract but now returns QUEUED promptly. The durable worker publishes COMPLETED/REJECTED/FAILED through polling; `result` is omitted until available. Canonical evidence snapshots/provenance are immutable. OFFLINE_STUB remains the default, and explicit Bedrock failure is visible rather than silently converted to an offline result. No financial observation or matching contract changes.
+
+### Source-time charts and scenario isolation
+
+Additive optional nullable `DashboardSummary.latest_activity_at` identifies the newest observed payment/settlement event time. `as_of` retains the server snapshot time. Web charts use the activity timestamp so simulator events outside the server's current date remain visible. Empty workspaces return null. Summary unmatched-payment checks now require the same scenario scope; a prior/unscoped settlement with a repeated reference cannot hide a payment in another run.
+
+Retry behavior: a 429 response preserves an already unconfirmed client mutation envelope. Waiting for the rate window does not authorize replacing its body, key or expected version.

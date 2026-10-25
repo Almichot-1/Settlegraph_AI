@@ -19,6 +19,7 @@ class UncertainApi implements ApiClient {
   final List<({Map<String, dynamic> body, Map<String, String> headers})>
   attempts = [];
   bool loseFirstReply = true;
+  bool throttleNext = false;
   @override
   Future<Map<String, dynamic>> get(
     String path, {
@@ -31,6 +32,15 @@ class UncertainApi implements ApiClient {
     Map<String, String>? headers,
   }) async {
     attempts.add((body: {...body}, headers: {...?headers}));
+    if (throttleNext) {
+      throttleNext = false;
+      throw const Failure(
+        'Wait before retrying.',
+        status: 429,
+        uncertain: true,
+        code: 'RATE_LIMITED',
+      );
+    }
     final response = await delegate.post(path, body, headers: headers);
     if (loseFirstReply) {
       loseFirstReply = false;
@@ -115,13 +125,23 @@ void main() {
       );
       expect(cubit.state.uncertain, isTrue);
       expect((await repo.detail(id)).caseRecord.status, 'RESOLVED');
+      wire.throttleNext = true;
+      await cubit.submit(
+        'REOPEN',
+        'Changed input during throttling.',
+        canReview: true,
+      );
+      expect(cubit.state.uncertain, isTrue);
+      expect(cubit.pending, isNotNull);
       await cubit.submit(
         'REOPEN',
         'This changed input must not be sent.',
         canReview: true,
       );
       expect(cubit.state.completed, isTrue);
-      expect(wire.attempts.length, 2);
+      expect(wire.attempts.length, 3);
+      expect(wire.attempts[0].headers, wire.attempts[2].headers);
+      expect(wire.attempts[0].body, wire.attempts[2].body);
       expect(wire.attempts[0].headers, wire.attempts[1].headers);
       expect(wire.attempts[0].headers['If-Match'], '"3"');
       expect(wire.attempts[0].body, wire.attempts[1].body);

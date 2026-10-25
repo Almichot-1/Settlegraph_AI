@@ -79,6 +79,7 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback()
 	var orders, payments, settlements, unmatched int64
 	var open int
+	var latest sql.NullTime
 	queries := []struct {
 		sql  string
 		dest any
@@ -86,8 +87,9 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 		{`SELECT COALESCE(sum(amount_minor),0) FROM merchant_orders WHERE organization_id=$1`, &orders},
 		{`SELECT COALESCE(sum(amount_minor),0) FROM observations WHERE organization_id=$1 AND kind='PAYMENT_ACCEPTED'`, &payments},
 		{`SELECT COALESCE(sum(amount_minor),0) FROM observations WHERE organization_id=$1 AND kind='SETTLEMENT_POSTED'`, &settlements},
-		{`SELECT COALESCE(sum(p.amount_minor),0) FROM observations p WHERE p.organization_id=$1 AND p.kind='PAYMENT_ACCEPTED' AND NOT EXISTS(SELECT 1 FROM observations s WHERE s.organization_id=p.organization_id AND s.kind='SETTLEMENT_POSTED' AND s.transfer_reference=p.transfer_reference AND s.payment_reference=p.transfer_reference AND s.amount_minor=p.amount_minor AND s.currency=p.currency)`, &unmatched},
+		{`SELECT COALESCE(sum(p.amount_minor),0) FROM observations p WHERE p.organization_id=$1 AND p.kind='PAYMENT_ACCEPTED' AND NOT EXISTS(SELECT 1 FROM observations s WHERE s.organization_id=p.organization_id AND s.kind='SETTLEMENT_POSTED' AND s.scenario_run_id IS NOT DISTINCT FROM p.scenario_run_id AND s.transfer_reference=p.transfer_reference AND s.payment_reference=p.transfer_reference AND s.amount_minor=p.amount_minor AND s.currency=p.currency)`, &unmatched},
 		{`SELECT count(*) FROM investigation_cases WHERE organization_id=$1 AND status<>'RESOLVED'`, &open},
+		{`SELECT max(occurred_at) FROM observations WHERE organization_id=$1 AND kind IN ('PAYMENT_ACCEPTED','SETTLEMENT_POSTED')`, &latest},
 	}
 	for _, q := range queries {
 		if tx.QueryRowContext(r.Context(), q.sql, org).Scan(q.dest) != nil {
@@ -135,7 +137,11 @@ func (a API) dashboardSummary(w http.ResponseWriter, r *http.Request) {
 		writeError(w, 503, "SERVICE_UNAVAILABLE", "Dashboard snapshot unavailable", reqID(r))
 		return
 	}
-	writeJSON(w, 200, map[string]any{"as_of": a.now().Format(time.RFC3339), "orders_expected": money(orders), "payments_accepted": money(payments), "settlements_observed": money(settlements), "unmatched_payments": money(unmatched), "open_cases": open, "providers": providers, "coverage": map[string]any{"source_status": coverage, "is_complete": isComplete}})
+	var latestActivity any
+	if latest.Valid {
+		latestActivity = latest.Time.UTC().Format(time.RFC3339Nano)
+	}
+	writeJSON(w, 200, map[string]any{"as_of": a.now().Format(time.RFC3339), "latest_activity_at": latestActivity, "orders_expected": money(orders), "payments_accepted": money(payments), "settlements_observed": money(settlements), "unmatched_payments": money(unmatched), "open_cases": open, "providers": providers, "coverage": map[string]any{"source_status": coverage, "is_complete": isComplete}})
 }
 
 func scanCase(rows interface{ Scan(...any) error }) (map[string]any, string, error) {

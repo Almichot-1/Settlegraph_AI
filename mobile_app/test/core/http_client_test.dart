@@ -137,6 +137,27 @@ void main() {
       expect(adapter.requests.length, 1);
     },
   );
+  test(
+    'a throttled POST preserves an earlier unconfirmed submission',
+    () async {
+      adapter.respond = (_) async => jsonResponse({
+        'error': {
+          'code': 'RATE_LIMITED',
+          'message': 'Wait before retrying.',
+          'request_id': 'rate-1',
+        },
+      }, 429);
+      await expectLater(
+        client.post('/v1/cases/a/decisions', {}),
+        throwsA(
+          isA<Failure>()
+              .having((f) => f.status, 'status', 429)
+              .having((f) => f.uncertain, 'uncertain', true),
+        ),
+      );
+      expect(adapter.requests.length, 1);
+    },
+  );
   test('an old organization reply cannot update the new workspace', () async {
     final reply = Completer<ResponseBody>();
     adapter.respond = (_) => reply.future;
